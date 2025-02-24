@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daniels Geschlechtsverkehr Status</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f9f9f9;
+        }
+
+        .container {
+            border: 2px solid #ccc; /* Rahmen um den gesamten Inhalt */
+            border-radius: 5px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Schatten um den gesamten Inhalt */
+            padding: 20px; /* Padding für den inneren Abstand */
+            background-color: white; /* Hintergrundfarbe für den Container */
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .status {
+            font-size: 1.5em;
+            text-align: center;
+            padding: 20px; /* Mehr Padding für bessere Lesbarkeit */
+            border-radius: 5px;
+            transition: background-color 0.3s; /* Sanfte Übergänge */
+        }
+
+        .status-hat-stattgefunden {
+            background-color: #d4edda; /* grün */
+            color: #155724; /* Dunkelgrün */
+        }
+
+        .status-koennte-mal-wieder {
+            background-color: #fff3cd; /* gelb */
+            color: #856404; /* Dunkelgelb */
+        }
+
+        .status-hat-quasi-nicht-stattgefunden {
+            background-color: #f8d7da; /* rot */
+            color: #721c24; /* Dunkelrot */
+        }
+
+        .error {
+            color: #721c24; /* Dunkelrot */
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Status von Daniels GV</h1>
+        <div class="status" id="statusDisplay">Lade Status...</div>
+    </div>
+
+    <script>
+        // Funktion zum Abrufen des aktuellen Status beim Laden der Seite
+        function getStatus() {
+            fetch('gv-date.txt')
+                .then(response => response.text())
+                .then(date => {
+                    if (!date) {
+                        document.getElementById("statusDisplay").innerText = "Kein Datum gespeichert.";
+                        document.getElementById("statusDisplay").className = "status error";
+                        return;
+                    }
+
+                    const inputDate = new Date(date);
+                    const now = new Date();
+                    const timeDifference = now - inputDate; // Zeitdifferenz in Millisekunden
+
+                    // Zeitdifferenzen in Tagen
+                    const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
+                    let statusMessage;
+                    let statusClass = "status";
+
+                    if (daysDifference < 3) {
+                        statusMessage = "hat stattgefunden";
+                        statusClass += " status-hat-stattgefunden";
+                    } else if (daysDifference < 14) {
+                        statusMessage = "könnte mal wieder";
+                        statusClass += " status-koennte-mal-wieder";
+                    } else {
+                        statusMessage = "leider zu lange her";
+                        statusClass += " status-hat-quasi-nicht-stattgefunden";
+                    }
+
+                    document.getElementById("statusDisplay").innerText = statusMessage;
+                    document.getElementById("statusDisplay").className = statusClass;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById("statusDisplay").innerText = "Fehler beim Abrufen des Datums.";
+                    document.getElementById("statusDisplay").className = "status error";
+                });
+        }
+
+        // Automatisches Abrufen des Status beim Laden der Seite
+        window.onload = getStatus;
+    </script>
+
+</body>
+
+</html>
