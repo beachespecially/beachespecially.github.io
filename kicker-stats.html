@@ -1,1 +1,1027 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Kicker Statistics</title>
+  <meta name="author" content="Kai Mueller">
+  <meta name="description" content="Kicker statistics keeper">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
+  <link href="enough.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Mobile-first basic styling */
+    .player-pool {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    
+    .player-btn {
+      padding: 0.5rem 1rem;
+      border: 2px solid #333;
+      background: white;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    
+    .player-btn.selected-team1 {
+      background: #4CAF50;
+      color: white;
+      border-color: #4CAF50;
+    }
+    
+    .player-btn.selected-team2 {
+      background: #2196F3;
+      color: white;
+      border-color: #2196F3;
+    }
+    
+    .player-btn.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .team-selection {
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    
+    .selected-players {
+      min-height: 2rem;
+      margin: 0.5rem 0;
+      font-weight: bold;
+    }
+    
+    .score-input {
+      width: 60px;
+      padding: 0.5rem;
+      font-size: 1.2rem;
+      text-align: center;
+      margin: 0 0.5rem;
+    }
+    
+    .game-entry {
+      padding: 1rem;
+      margin: 0.5rem 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+    
+    .btn {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      margin: 0.5rem 0.5rem 0.5rem 0;
+    }
+    
+    .btn-primary {
+      background: #2196F3;
+      color: white;
+    }
+    
+    .btn-success {
+      background: #4CAF50;
+      color: white;
+    }
+    
+    .btn-secondary {
+      background: #666;
+      color: white;
+    }
+    
+    .score-display {
+      font-size: 1.5rem;
+      font-weight: bold;
+      text-align: center;
+      margin: 1rem 0;
+    }
+    
+    .add-player-form {
+      margin: 1rem 0;
+    }
+    
+    .add-player-form input {
+      padding: 0.5rem;
+      font-size: 1rem;
+      margin-right: 0.5rem;
+    }
+    
+    section {
+      margin: 2rem 0;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    
+    .stats-table th,
+    .stats-table td {
+      padding: 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .stats-table th {
+      background: #f5f5f5;
+      font-weight: bold;
+    }
+    
+    .stats-table tr:hover {
+      background: #f9f9f9;
+    }
+    
+    .stats-section {
+      margin: 2rem 0;
+    }
+    
+    .stat-number {
+      font-weight: bold;
+      color: #2196F3;
+    }
+    
+    @media (max-width: 600px) {
+      .stats-table {
+        font-size: 0.8rem;
+      }
+      
+      .stats-table th,
+      .stats-table td {
+        padding: 0.3rem;
+      }
+    }
+    
+    .plus-icon {
+      cursor: pointer;
+      color: #2196F3;
+      font-size: 1.5rem;
+      margin-left: 0.5rem;
+      user-select: none;
+    }
+    
+    .plus-icon:hover {
+      color: #1976D2;
+    }
+    
+    .pool-header {
+      display: flex;
+      align-items: center;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin: 1rem 0;
+      border-bottom: 2px solid #ddd;
+    }
+    
+    .tab {
+      padding: 0.75rem 1.5rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    
+    .tab:hover {
+      background: #f5f5f5;
+    }
+    
+    .tab.active {
+      border-bottom-color: #2196F3;
+      font-weight: bold;
+      color: #2196F3;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kicker Statistics</h1>
+  </header>
+  <main>
+    <!-- Tab Navigation -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('log-game')">Log Game</button>
+      <button class="tab" onclick="switchTab('history')">History</button>
+    </div>
+
+    <!-- Log Game Tab -->
+    <div id="log-game-tab" class="tab-content active">
+    <section id="log-game-section">
+      <h2>Log New Game</h2>
+      
+      <div class="team-selection">
+        <h3>Team 1</h3>
+        <div class="selected-players" id="team1-players">
+          Select 2 players
+        </div>
+      </div>
+      
+      <div class="team-selection">
+        <h3>Team 2</h3>
+        <div class="selected-players" id="team2-players">
+          Select 2 players
+        </div>
+      </div>
+      
+      <div class="score-display">
+        <label>Score:</label>
+        <input type="number" id="team1-score" class="score-input" min="0" max="10" value="0" />
+        :
+        <input type="number" id="team2-score" class="score-input" min="0" max="10" value="0" />
+      </div>
+      
+      <button class="btn btn-success" onclick="logGame()">Log Game</button>
+      <button class="btn btn-secondary" onclick="resetSelection()">Reset</button>
+      
+      <div class="pool-header">
+        <h3>Player Pool</h3>
+        <span class="plus-icon" onclick="toggleAddPlayer()" title="Add player">+</span>
+      </div>
+      
+      <!-- Add Player Form -->
+      <div id="add-player-form" class="add-player-form hidden">
+        <input type="text" id="new-player-name" placeholder="Player name" />
+        <button class="btn btn-primary" onclick="addPlayer()">Add Player</button>
+      </div>
+      
+      <div id="player-pool" class="player-pool"></div>
+    </section>
+    </div>
+
+    <!-- History Tab -->
+    <div id="history-tab" class="tab-content">
+    <section id="game-history-section">
+      <h2>Statistics</h2>
+      
+      <div class="stats-section">
+        <h3>Team Statistics</h3>
+        <div id="team-stats"></div>
+      </div>
+      
+      <div class="stats-section">
+        <h3>Player Statistics</h3>
+        <div id="player-stats"></div>
+      </div>
+      
+      <h2>Game History</h2>
+      <button class="btn btn-secondary" onclick="clearHistory()">Clear All History</button>
+      <div id="game-history"></div>
+    </section>
+    </div>
+
+    <hr>
+    <a href="/index.html">< back home</a>
+  </main>
+
+  <script>
+    // ============================================================================
+    // SUPABASE CONFIGURATION
+    // ============================================================================
+    const SUPABASE_URL = 'https://jrxghkdtnpohqrmcfswg.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_-6BSbFrCttifJ3ZB64omug_unMpVSo-';
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // ============================================================================
+    // CONSTANTS
+    // ============================================================================
+    const PLAYERS_PER_TEAM = 2;
+    const MIN_SCORE = 0;
+    const MAX_SCORE = 10;
+    const DEFAULT_SCORE = 0;
+    
+    const DOM_IDS = {
+      PLAYER_POOL: 'player-pool',
+      ADD_PLAYER_FORM: 'add-player-form',
+      PLAYER_NAME_INPUT: 'new-player-name',
+      TEAM1_PLAYERS: 'team1-players',
+      TEAM2_PLAYERS: 'team2-players',
+      TEAM1_SCORE: 'team1-score',
+      TEAM2_SCORE: 'team2-score',
+      GAME_HISTORY: 'game-history',
+      TEAM_STATS: 'team-stats',
+      PLAYER_STATS: 'player-stats',
+      LOG_GAME_TAB: 'log-game-tab',
+      HISTORY_TAB: 'history-tab'
+    };
+    
+    const CSS_CLASSES = {
+      SELECTED_TEAM1: 'selected-team1',
+      SELECTED_TEAM2: 'selected-team2',
+      DISABLED: 'disabled',
+      HIDDEN: 'hidden',
+      ACTIVE: 'active',
+      PLAYER_BTN: 'player-btn',
+      GAME_ENTRY: 'game-entry'
+    };
+    
+    const MESSAGES = {
+      NO_PLAYERS: 'No players yet. Add some players first!',
+      NO_GAMES: 'No games logged yet.',
+      ENTER_NAME: 'Please enter a player name',
+      PLAYER_EXISTS: 'Player already exists',
+      SELECT_TEAM: (team) => `Please select ${PLAYERS_PER_TEAM} players for Team ${team}`,
+      INVALID_SCORES: `Scores must be between ${MIN_SCORE} and ${MAX_SCORE}`,
+      GAME_LOGGED: 'Game logged successfully!',
+      CONFIRM_CLEAR: 'Are you sure you want to clear all game history? This cannot be undone.',
+      SELECT_PROMPT: `Select ${PLAYERS_PER_TEAM} players`
+    };
+    
+    const TABS = {
+      LOG_GAME: 'log-game',
+      HISTORY: 'history'
+    };
+
+    // ============================================================================
+    // STATE
+    // ============================================================================
+    let players = [];
+    let games = [];
+    let selectedTeam1 = [];
+    let selectedTeam2 = [];
+
+    // ============================================================================
+    // UTILITY FUNCTIONS
+    // ============================================================================
+    const getElement = (id) => document.getElementById(id);
+    const getAllElements = (selector) => document.querySelectorAll(selector);
+    
+    const isPlayerSelected = (player) => 
+      selectedTeam1.includes(player) || selectedTeam2.includes(player);
+    
+    const isTeamFull = (team) => team.length >= PLAYERS_PER_TEAM;
+    
+    const areTeamsFull = () => 
+      isTeamFull(selectedTeam1) && isTeamFull(selectedTeam2);
+    
+    const formatTeamDisplay = (team) => 
+      team.length > 0 ? team.join(' & ') : MESSAGES.SELECT_PROMPT;
+    
+    const formatDateTime = (isoDate) => {
+      const date = new Date(isoDate);
+      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    };
+    
+    const normalizeTeam = (team) => {
+      return [...team].sort().join(' & ');
+    };
+
+    // ============================================================================
+    // DATA PERSISTENCE
+    // ============================================================================
+    const loadData = async () => {
+      try {
+        // Load players from Supabase
+        const { data: playersData, error: playersError } = await supabaseClient
+          .from('players')
+          .select('name')
+          .order('created_at', { ascending: true });
+        
+        if (playersError) throw playersError;
+        
+        if (playersData) {
+          players = playersData.map(p => p.name);
+        }
+        
+        // Load games from Supabase
+        const { data: gamesData, error: gamesError } = await supabaseClient
+          .from('games')
+          .select('*')
+          .order('date', { ascending: false });
+        
+        if (gamesError) throw gamesError;
+        
+        if (gamesData) {
+          games = gamesData;
+        }
+      } catch (error) {
+        console.error('Error loading data from Supabase:', error);
+        alert('Failed to load data. Please check your connection.');
+      }
+    };
+
+    const savePlayer = async (playerName) => {
+      try {
+        const { error } = await supabaseClient
+          .from('players')
+          .insert([{ name: playerName }]);
+        
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error saving player:', error);
+        throw error;
+      }
+    };
+
+    const saveGame = async (game) => {
+      try {
+        const { error } = await supabaseClient
+          .from('games')
+          .insert([game]);
+        
+        if (error) throw error;
+        
+        games.unshift(game);
+      } catch (error) {
+        console.error('Error saving game:', error);
+        throw error;
+      }
+    };
+
+    const clearAllGames = async () => {
+      try {
+        const { error } = await supabaseClient
+          .from('games')
+          .delete()
+          .gte('id', 0); // Delete all rows
+        
+        if (error) throw error;
+        
+        games = [];
+      } catch (error) {
+        console.error('Error clearing games:', error);
+        throw error;
+      }
+    };
+
+    // ============================================================================
+    // PLAYER MANAGEMENT
+    // ============================================================================
+    const toggleAddPlayer = () => {
+      const form = getElement(DOM_IDS.ADD_PLAYER_FORM);
+      form.classList.toggle(CSS_CLASSES.HIDDEN);
+      
+      if (!form.classList.contains(CSS_CLASSES.HIDDEN)) {
+        getElement(DOM_IDS.PLAYER_NAME_INPUT).focus();
+      }
+    };
+
+    const addPlayer = async () => {
+      const input = getElement(DOM_IDS.PLAYER_NAME_INPUT);
+      const name = input.value.trim();
+      
+      if (!validatePlayerName(name)) return;
+      
+      try {
+        await savePlayer(name);
+        players.push(name);
+        
+        clearPlayerInput(input);
+        hideAddPlayerForm();
+        renderPlayerPool();
+      } catch (error) {
+        alert('Failed to add player. Please try again.');
+      }
+    };
+    
+    const validatePlayerName = (name) => {
+      if (name === '') {
+        alert(MESSAGES.ENTER_NAME);
+        return false;
+      }
+      
+      if (players.includes(name)) {
+        alert(MESSAGES.PLAYER_EXISTS);
+        return false;
+      }
+      
+      return true;
+    };
+    
+    const clearPlayerInput = (input) => {
+      input.value = '';
+    };
+    
+    const hideAddPlayerForm = () => {
+      getElement(DOM_IDS.ADD_PLAYER_FORM).classList.add(CSS_CLASSES.HIDDEN);
+    };
+
+    // ============================================================================
+    // TEAM SELECTION
+    // ============================================================================
+    const togglePlayerSelection = (player) => {
+      if (removePlayerFromTeam(player, selectedTeam1)) return;
+      if (removePlayerFromTeam(player, selectedTeam2)) return;
+      
+      addPlayerToAvailableTeam(player);
+    };
+    
+    const removePlayerFromTeam = (player, team) => {
+      const index = team.indexOf(player);
+      if (index === -1) return false;
+      
+      team.splice(index, 1);
+      refreshUI();
+      return true;
+    };
+    
+    const addPlayerToAvailableTeam = (player) => {
+      if (!isTeamFull(selectedTeam1)) {
+        selectedTeam1.push(player);
+        refreshUI();
+        return;
+      }
+      
+      if (!isTeamFull(selectedTeam2)) {
+        selectedTeam2.push(player);
+        refreshUI();
+        return;
+      }
+    };
+    
+    const refreshUI = () => {
+      updateTeamDisplay();
+      renderPlayerPool();
+    };
+
+    const updateTeamDisplay = () => {
+      getElement(DOM_IDS.TEAM1_PLAYERS).textContent = formatTeamDisplay(selectedTeam1);
+      getElement(DOM_IDS.TEAM2_PLAYERS).textContent = formatTeamDisplay(selectedTeam2);
+    };
+
+    const resetSelection = () => {
+      selectedTeam1 = [];
+      selectedTeam2 = [];
+      
+      getElement(DOM_IDS.TEAM1_SCORE).value = DEFAULT_SCORE;
+      getElement(DOM_IDS.TEAM2_SCORE).value = DEFAULT_SCORE;
+      
+      refreshUI();
+    };
+
+    // ============================================================================
+    // RENDERING
+    // ============================================================================
+    const renderPlayerPool = () => {
+      const pool = getElement(DOM_IDS.PLAYER_POOL);
+      pool.innerHTML = '';
+      
+      if (players.length === 0) {
+        pool.innerHTML = `<p>${MESSAGES.NO_PLAYERS}</p>`;
+        return;
+      }
+      
+      players.forEach(player => {
+        pool.appendChild(createPlayerButton(player));
+      });
+    };
+    
+    const createPlayerButton = (player) => {
+      const btn = document.createElement('button');
+      btn.className = CSS_CLASSES.PLAYER_BTN;
+      btn.textContent = player;
+      btn.onclick = () => togglePlayerSelection(player);
+      
+      applyPlayerButtonState(btn, player);
+      
+      return btn;
+    };
+    
+    const applyPlayerButtonState = (btn, player) => {
+      if (selectedTeam1.includes(player)) {
+        btn.classList.add(CSS_CLASSES.SELECTED_TEAM1);
+      } else if (selectedTeam2.includes(player)) {
+        btn.classList.add(CSS_CLASSES.SELECTED_TEAM2);
+      }
+      
+      if (shouldDisableButton(player)) {
+        btn.classList.add(CSS_CLASSES.DISABLED);
+        btn.disabled = true;
+      }
+    };
+    
+    const shouldDisableButton = (player) => {
+      return areTeamsFull() && !isPlayerSelected(player);
+    };
+
+    const renderGameHistory = () => {
+      const history = getElement(DOM_IDS.GAME_HISTORY);
+      
+      if (games.length === 0) {
+        history.innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
+        getElement(DOM_IDS.TEAM_STATS).innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
+        getElement(DOM_IDS.PLAYER_STATS).innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
+        return;
+      }
+      
+      // Render statistics
+      renderTeamStats();
+      renderPlayerStats();
+      
+      // Render game history
+      history.innerHTML = '';
+      
+      games.forEach(game => {
+        history.appendChild(createGameEntry(game));
+      });
+    };
+    
+    const createGameEntry = (game) => {
+      const entry = document.createElement('div');
+      entry.className = CSS_CLASSES.GAME_ENTRY;
+      entry.innerHTML = buildGameEntryHTML(game);
+      return entry;
+    };
+    
+    const buildGameEntryHTML = (game) => {
+      const dateStr = formatDateTime(game.date);
+      const winner = determineWinner(game);
+      const winnerDisplay = getWinnerDisplay(game, winner);
+      
+      return `
+        <div><small>${dateStr}</small></div>
+        <div style="margin: 0.5rem 0;">
+          <strong>${game.team1.join(' & ')}</strong>
+          <span style="font-size: 1.3rem; margin: 0 1rem;">${game.score1} : ${game.score2}</span>
+          <strong>${game.team2.join(' & ')}</strong>
+        </div>
+        ${winnerDisplay}
+      `;
+    };
+    
+    const determineWinner = (game) => {
+      if (game.score1 > game.score2) return 'team1';
+      if (game.score2 > game.score1) return 'team2';
+      return 'draw';
+    };
+    
+    const getWinnerDisplay = (game, winner) => {
+      if (winner === 'draw') {
+        return '<div><em>Draw</em></div>';
+      }
+      
+      const winningTeam = winner === 'team1' ? game.team1 : game.team2;
+      return `<div><em>Winner: ${winningTeam.join(' & ')}</em></div>`;
+    };
+    
+    // ============================================================================
+    // STATISTICS
+    // ============================================================================
+    const calculateTeamStats = () => {
+      const teamStats = {};
+      
+      games.forEach(game => {
+        const team1Name = normalizeTeam(game.team1);
+        const team2Name = normalizeTeam(game.team2);
+        
+        // Initialize team stats if not exists
+        if (!teamStats[team1Name]) {
+          teamStats[team1Name] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0 };
+        }
+        if (!teamStats[team2Name]) {
+          teamStats[team2Name] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0 };
+        }
+        
+        // Update stats
+        teamStats[team1Name].games++;
+        teamStats[team2Name].games++;
+        teamStats[team1Name].goalsFor += game.score1;
+        teamStats[team1Name].goalsAgainst += game.score2;
+        teamStats[team2Name].goalsFor += game.score2;
+        teamStats[team2Name].goalsAgainst += game.score1;
+        
+        if (game.score1 > game.score2) {
+          teamStats[team1Name].wins++;
+          teamStats[team2Name].losses++;
+        } else if (game.score2 > game.score1) {
+          teamStats[team2Name].wins++;
+          teamStats[team1Name].losses++;
+        } else {
+          teamStats[team1Name].draws++;
+          teamStats[team2Name].draws++;
+        }
+      });
+      
+      return teamStats;
+    };
+    
+    const calculatePlayerStats = () => {
+      const playerStats = {};
+      
+      games.forEach(game => {
+        // Process team 1 players
+        game.team1.forEach(player => {
+          if (!playerStats[player]) {
+            playerStats[player] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0 };
+          }
+          
+          playerStats[player].games++;
+          playerStats[player].goalsFor += game.score1;
+          playerStats[player].goalsAgainst += game.score2;
+          
+          if (game.score1 > game.score2) {
+            playerStats[player].wins++;
+          } else if (game.score2 > game.score1) {
+            playerStats[player].losses++;
+          } else {
+            playerStats[player].draws++;
+          }
+        });
+        
+        // Process team 2 players
+        game.team2.forEach(player => {
+          if (!playerStats[player]) {
+            playerStats[player] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0 };
+          }
+          
+          playerStats[player].games++;
+          playerStats[player].goalsFor += game.score2;
+          playerStats[player].goalsAgainst += game.score1;
+          
+          if (game.score2 > game.score1) {
+            playerStats[player].wins++;
+          } else if (game.score1 > game.score2) {
+            playerStats[player].losses++;
+          } else {
+            playerStats[player].draws++;
+          }
+        });
+      });
+      
+      return playerStats;
+    };
+    
+    const renderTeamStats = () => {
+      const teamStats = calculateTeamStats();
+      const container = getElement(DOM_IDS.TEAM_STATS);
+      
+      if (Object.keys(teamStats).length === 0) {
+        container.innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
+        return;
+      }
+      
+      // Sort teams by wins, then by goal difference
+      const sortedTeams = Object.entries(teamStats).sort((a, b) => {
+        const winsA = a[1].wins;
+        const winsB = b[1].wins;
+        if (winsA !== winsB) return winsB - winsA;
+        
+        const gdA = a[1].goalsFor - a[1].goalsAgainst;
+        const gdB = b[1].goalsFor - b[1].goalsAgainst;
+        return gdB - gdA;
+      });
+      
+      let html = `
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>W</th>
+              <th>L</th>
+              <th>D</th>
+              <th>GF</th>
+              <th>GA</th>
+              <th>GD</th>
+              <th>Games</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      sortedTeams.forEach(([team, stats]) => {
+        const goalDiff = stats.goalsFor - stats.goalsAgainst;
+        const gdDisplay = goalDiff > 0 ? `+${goalDiff}` : goalDiff;
+        
+        html += `
+          <tr>
+            <td><strong>${team}</strong></td>
+            <td class="stat-number">${stats.wins}</td>
+            <td>${stats.losses}</td>
+            <td>${stats.draws}</td>
+            <td>${stats.goalsFor}</td>
+            <td>${stats.goalsAgainst}</td>
+            <td>${gdDisplay}</td>
+            <td>${stats.games}</td>
+          </tr>
+        `;
+      });
+      
+      html += `
+          </tbody>
+        </table>
+      `;
+      
+      container.innerHTML = html;
+    };
+    
+    const renderPlayerStats = () => {
+      const playerStats = calculatePlayerStats();
+      const container = getElement(DOM_IDS.PLAYER_STATS);
+      
+      if (Object.keys(playerStats).length === 0) {
+        container.innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
+        return;
+      }
+      
+      // Sort players by wins, then by games played
+      const sortedPlayers = Object.entries(playerStats).sort((a, b) => {
+        const winsA = a[1].wins;
+        const winsB = b[1].wins;
+        if (winsA !== winsB) return winsB - winsA;
+        return b[1].games - a[1].games;
+      });
+      
+      let html = `
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>W</th>
+              <th>L</th>
+              <th>D</th>
+              <th>GF</th>
+              <th>GA</th>
+              <th>GD</th>
+              <th>Games</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      sortedPlayers.forEach(([player, stats]) => {
+        const goalDiff = stats.goalsFor - stats.goalsAgainst;
+        const gdDisplay = goalDiff > 0 ? `+${goalDiff}` : goalDiff;
+        
+        html += `
+          <tr>
+            <td><strong>${player}</strong></td>
+            <td class="stat-number">${stats.wins}</td>
+            <td>${stats.losses}</td>
+            <td>${stats.draws}</td>
+            <td>${stats.goalsFor}</td>
+            <td>${stats.goalsAgainst}</td>
+            <td>${gdDisplay}</td>
+            <td>${stats.games}</td>
+          </tr>
+        `;
+      });
+      
+      html += `
+          </tbody>
+        </table>
+      `;
+      
+      container.innerHTML = html;
+    };
+
+    // ============================================================================
+    // GAME LOGGING
+    // ============================================================================
+    const logGame = async () => {
+      if (!validateTeamSelections()) return;
+      
+      const scores = getScores();
+      if (!validateScores(scores)) return;
+      
+      const game = createGame(scores);
+      
+      try {
+        await saveGame(game);
+        resetSelection();
+        alert(MESSAGES.GAME_LOGGED);
+        switchTab(TABS.HISTORY);
+      } catch (error) {
+        alert('Failed to save game. Please try again.');
+      }
+    };
+    
+    const validateTeamSelections = () => {
+      if (!isTeamFull(selectedTeam1)) {
+        alert(MESSAGES.SELECT_TEAM(1));
+        return false;
+      }
+      
+      if (!isTeamFull(selectedTeam2)) {
+        alert(MESSAGES.SELECT_TEAM(2));
+        return false;
+      }
+      
+      return true;
+    };
+    
+    const getScores = () => {
+      return {
+        team1: parseInt(getElement(DOM_IDS.TEAM1_SCORE).value),
+        team2: parseInt(getElement(DOM_IDS.TEAM2_SCORE).value)
+      };
+    };
+    
+    const validateScores = (scores) => {
+      if (scores.team1 < MIN_SCORE || scores.team2 < MIN_SCORE || 
+          scores.team1 > MAX_SCORE || scores.team2 > MAX_SCORE) {
+        alert(MESSAGES.INVALID_SCORES);
+        return false;
+      }
+      return true;
+    };
+    
+    const createGame = (scores) => {
+      return {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        team1: [...selectedTeam1],
+        team2: [...selectedTeam2],
+        score1: scores.team1,
+        score2: scores.team2
+      };
+    };
+    
+    const clearHistory = async () => {
+      if (!confirm(MESSAGES.CONFIRM_CLEAR)) return;
+      
+      try {
+        await clearAllGames();
+        renderGameHistory();
+      } catch (error) {
+        alert('Failed to clear history. Please try again.');
+      }
+    };
+
+    // ============================================================================
+    // TAB NAVIGATION
+    // ============================================================================
+    const switchTab = (tabName) => {
+      deactivateAllTabs();
+      activateTab(tabName);
+    };
+    
+    const deactivateAllTabs = () => {
+      getAllElements('.tab-content').forEach(tab => {
+        tab.classList.remove(CSS_CLASSES.ACTIVE);
+      });
+      
+      getAllElements('.tab').forEach(btn => {
+        btn.classList.remove(CSS_CLASSES.ACTIVE);
+      });
+    };
+    
+    const activateTab = (tabName) => {
+      const tabConfig = {
+        [TABS.LOG_GAME]: {
+          contentId: DOM_IDS.LOG_GAME_TAB,
+          buttonIndex: 0
+        },
+        [TABS.HISTORY]: {
+          contentId: DOM_IDS.HISTORY_TAB,
+          buttonIndex: 1,
+          onActivate: renderGameHistory
+        }
+      };
+      
+      const config = tabConfig[tabName];
+      if (!config) return;
+      
+      getElement(config.contentId).classList.add(CSS_CLASSES.ACTIVE);
+      getAllElements('.tab')[config.buttonIndex].classList.add(CSS_CLASSES.ACTIVE);
+      
+      if (config.onActivate) config.onActivate();
+    };
+
+    // ============================================================================
+    // INITIALIZATION
+    // ============================================================================
+    const init = async () => {
+      // Show loading state
+      const playerPool = getElement(DOM_IDS.PLAYER_POOL);
+      const gameHistory = getElement(DOM_IDS.GAME_HISTORY);
+      
+      playerPool.innerHTML = '<p>Loading players...</p>';
+      gameHistory.innerHTML = '<p>Loading games...</p>';
+      
+      // Load data from Supabase
+      await loadData();
+      
+      // Render UI
+      renderPlayerPool();
+      renderGameHistory();
+    };
+
+    init();
+  </script>
+</body>
+</html>
