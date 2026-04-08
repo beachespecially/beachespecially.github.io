@@ -181,6 +181,25 @@
       color: #2196F3;
     }
     
+    .form-indicator {
+      display: inline-block;
+      width: 1.2rem;
+      height: 1.2rem;
+      line-height: 1.2rem;
+      text-align: center;
+      margin: 0 0.1rem;
+      font-weight: bold;
+      border-radius: 2px;
+    }
+    
+    .form-win {
+      color: #4CAF50;
+    }
+    
+    .form-loss {
+      color: #f44336;
+    }
+    
     @media (max-width: 600px) {
       .stats-table {
         font-size: 0.8rem;
@@ -425,6 +444,69 @@
     const calculateWinPercentage = (wins, total) => {
       if (total === 0) return 0;
       return ((wins / total) * 100).toFixed(1);
+    };
+    
+    const getFavoriteOpponent = (opponents) => {
+      if (!opponents || Object.keys(opponents).length === 0) return '-';
+      
+      let maxWins = 0;
+      let favorite = '-';
+      
+      Object.entries(opponents).forEach(([opponent, stats]) => {
+        if (stats.wins > maxWins) {
+          maxWins = stats.wins;
+          favorite = `${opponent} (${stats.wins}W)`;
+        }
+      });
+      
+      return maxWins > 0 ? favorite : '-';
+    };
+    
+    const getLeastFavoriteOpponent = (opponents) => {
+      if (!opponents || Object.keys(opponents).length === 0) return '-';
+      
+      let maxLosses = 0;
+      let leastFavorite = '-';
+      
+      Object.entries(opponents).forEach(([opponent, stats]) => {
+        if (stats.losses > maxLosses) {
+          maxLosses = stats.losses;
+          leastFavorite = `${opponent} (${stats.losses}L)`;
+        }
+      });
+      
+      return maxLosses > 0 ? leastFavorite : '-';
+    };
+    
+    const getBestPartner = (partners) => {
+      if (!partners || Object.keys(partners).length === 0) return '-';
+      
+      let maxWins = 0;
+      let bestPartner = '-';
+      
+      Object.entries(partners).forEach(([partner, stats]) => {
+        if (stats.wins > maxWins) {
+          maxWins = stats.wins;
+          bestPartner = `${partner} (${stats.wins}W)`;
+        }
+      });
+      
+      return maxWins > 0 ? bestPartner : '-';
+    };
+    
+    const getFormDisplay = (form) => {
+      if (!form || form.length === 0) return '-';
+      
+      // Get last 5 games (form is in reverse chronological order)
+      const lastFive = form.slice(0, 5);
+      
+      return lastFive.map(result => {
+        if (result === 'W') {
+          return '<span class="form-indicator form-win">+</span>';
+        } else {
+          return '<span class="form-indicator form-loss">-</span>';
+        }
+      }).join('');
     };
 
     // ============================================================================
@@ -727,10 +809,10 @@
         
         // Initialize team stats if not exists
         if (!teamStats[team1Name]) {
-          teamStats[team1Name] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0 };
+          teamStats[team1Name] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0, form: [] };
         }
         if (!teamStats[team2Name]) {
-          teamStats[team2Name] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0 };
+          teamStats[team2Name] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0, form: [] };
         }
         
         // Update stats
@@ -744,12 +826,18 @@
         if (game.score1 > game.score2) {
           teamStats[team1Name].wins++;
           teamStats[team2Name].losses++;
+          teamStats[team1Name].form.push('W');
+          teamStats[team2Name].form.push('L');
         } else if (game.score2 > game.score1) {
           teamStats[team2Name].wins++;
           teamStats[team1Name].losses++;
+          teamStats[team2Name].form.push('W');
+          teamStats[team1Name].form.push('L');
         } else {
           teamStats[team1Name].draws++;
           teamStats[team2Name].draws++;
+          teamStats[team1Name].form.push('D');
+          teamStats[team2Name].form.push('D');
         }
       });
       
@@ -763,12 +851,53 @@
         // Process team 1 players
         game.team1.forEach(player => {
           if (!playerStats[player]) {
-            playerStats[player] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0 };
+            playerStats[player] = { 
+              wins: 0, 
+              losses: 0, 
+              draws: 0, 
+              goalsFor: 0, 
+              goalsAgainst: 0, 
+              games: 0,
+              opponents: {}, // Track wins/losses against each opponent
+              partners: {} // Track wins/losses with each partner
+            };
           }
           
           playerStats[player].games++;
           playerStats[player].goalsFor += game.score1;
           playerStats[player].goalsAgainst += game.score2;
+          
+          // Track opponent records
+          game.team2.forEach(opponent => {
+            if (!playerStats[player].opponents[opponent]) {
+              playerStats[player].opponents[opponent] = { wins: 0, losses: 0, draws: 0 };
+            }
+            
+            if (game.score1 > game.score2) {
+              playerStats[player].opponents[opponent].wins++;
+            } else if (game.score2 > game.score1) {
+              playerStats[player].opponents[opponent].losses++;
+            } else {
+              playerStats[player].opponents[opponent].draws++;
+            }
+          });
+          
+          // Track partner records
+          game.team1.forEach(partner => {
+            if (partner !== player) {
+              if (!playerStats[player].partners[partner]) {
+                playerStats[player].partners[partner] = { wins: 0, losses: 0, draws: 0 };
+              }
+              
+              if (game.score1 > game.score2) {
+                playerStats[player].partners[partner].wins++;
+              } else if (game.score2 > game.score1) {
+                playerStats[player].partners[partner].losses++;
+              } else {
+                playerStats[player].partners[partner].draws++;
+              }
+            }
+          });
           
           if (game.score1 > game.score2) {
             playerStats[player].wins++;
@@ -782,12 +911,53 @@
         // Process team 2 players
         game.team2.forEach(player => {
           if (!playerStats[player]) {
-            playerStats[player] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0 };
+            playerStats[player] = { 
+              wins: 0, 
+              losses: 0, 
+              draws: 0, 
+              goalsFor: 0, 
+              goalsAgainst: 0, 
+              games: 0,
+              opponents: {},
+              partners: {}
+            };
           }
           
           playerStats[player].games++;
           playerStats[player].goalsFor += game.score2;
           playerStats[player].goalsAgainst += game.score1;
+          
+          // Track opponent records
+          game.team1.forEach(opponent => {
+            if (!playerStats[player].opponents[opponent]) {
+              playerStats[player].opponents[opponent] = { wins: 0, losses: 0, draws: 0 };
+            }
+            
+            if (game.score2 > game.score1) {
+              playerStats[player].opponents[opponent].wins++;
+            } else if (game.score1 > game.score2) {
+              playerStats[player].opponents[opponent].losses++;
+            } else {
+              playerStats[player].opponents[opponent].draws++;
+            }
+          });
+          
+          // Track partner records
+          game.team2.forEach(partner => {
+            if (partner !== player) {
+              if (!playerStats[player].partners[partner]) {
+                playerStats[player].partners[partner] = { wins: 0, losses: 0, draws: 0 };
+              }
+              
+              if (game.score2 > game.score1) {
+                playerStats[player].partners[partner].wins++;
+              } else if (game.score1 > game.score2) {
+                playerStats[player].partners[partner].losses++;
+              } else {
+                playerStats[player].partners[partner].draws++;
+              }
+            }
+          });
           
           if (game.score2 > game.score1) {
             playerStats[player].wins++;
@@ -827,6 +997,7 @@
               <th class="sortable ${teamSortColumn === 'goalsAgainst' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('goalsAgainst')">GA</th>
               <th class="sortable ${teamSortColumn === 'goalDiff' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('goalDiff')">GD</th>
               <th class="sortable ${teamSortColumn === 'games' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('games')">Games</th>
+              <th>Form (Last 5)</th>
             </tr>
           </thead>
           <tbody>
@@ -836,6 +1007,7 @@
         const goalDiff = stats.goalsFor - stats.goalsAgainst;
         const gdDisplay = goalDiff > 0 ? `+${goalDiff}` : goalDiff;
         const winPct = calculateWinPercentage(stats.wins, stats.games);
+        const formDisplay = getFormDisplay(stats.form);
         
         html += `
           <tr>
@@ -848,6 +1020,7 @@
             <td>${stats.goalsAgainst}</td>
             <td>${gdDisplay}</td>
             <td>${stats.games}</td>
+            <td>${formDisplay}</td>
           </tr>
         `;
       });
@@ -918,6 +1091,9 @@
               <th class="sortable ${playerSortColumn === 'goalsAgainst' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('goalsAgainst')">GA</th>
               <th class="sortable ${playerSortColumn === 'goalDiff' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('goalDiff')">GD</th>
               <th class="sortable ${playerSortColumn === 'games' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('games')">Games</th>
+              <th>Best Partner</th>
+              <th>Fav. Opp</th>
+              <th>Least Fav. Opp</th>
             </tr>
           </thead>
           <tbody>
@@ -927,6 +1103,9 @@
         const goalDiff = stats.goalsFor - stats.goalsAgainst;
         const gdDisplay = goalDiff > 0 ? `+${goalDiff}` : goalDiff;
         const winPct = calculateWinPercentage(stats.wins, stats.games);
+        const bestPartner = getBestPartner(stats.partners);
+        const favOpponent = getFavoriteOpponent(stats.opponents);
+        const leastFavOpponent = getLeastFavoriteOpponent(stats.opponents);
         
         html += `
           <tr>
@@ -939,6 +1118,9 @@
             <td>${stats.goalsAgainst}</td>
             <td>${gdDisplay}</td>
             <td>${stats.games}</td>
+            <td>${bestPartner}</td>
+            <td>${favOpponent}</td>
+            <td>${leastFavOpponent}</td>
           </tr>
         `;
       });
