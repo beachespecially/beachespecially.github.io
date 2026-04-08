@@ -121,6 +121,47 @@
       width: 100%;
     }
     
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 1.5rem 0;
+      flex-wrap: wrap;
+    }
+    
+    .pagination-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid #ddd;
+      background: white;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    
+    .pagination-btn:hover:not(:disabled) {
+      background: #f5f5f5;
+      border-color: #2196F3;
+    }
+    
+    .pagination-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    
+    .pagination-btn.active {
+      background: #2196F3;
+      color: white;
+      border-color: #2196F3;
+    }
+    
+    .pagination-info {
+      font-size: 0.9rem;
+      color: #666;
+      padding: 0 0.5rem;
+    }
+    
     .score-input {
       width: 60px;
       padding: 0.5rem;
@@ -341,7 +382,8 @@
     <!-- Tab Navigation -->
     <div class="tabs">
       <button class="tab active" onclick="switchTab('log-game')">Log Game</button>
-      <button class="tab" onclick="switchTab('history')">Statistics</button>
+      <button class="tab" onclick="switchTab('statistics')">Statistics</button>
+      <button class="tab" onclick="switchTab('games')">History</button>
     </div>
 
     <!-- Log Game Tab -->
@@ -388,7 +430,7 @@
 
     <!-- History Tab -->
     <div id="history-tab" class="tab-content">
-    <section id="game-history-section">
+    <section id="statistics-section">
       <div class="stats-section">
         <h3>Team Statistics</h3>
         <div id="team-stats"></div>
@@ -398,9 +440,15 @@
         <h3>Player Statistics</h3>
         <div id="player-stats"></div>
       </div>
-      
-      <h2>Game History</h2>
+    </section>
+    </div>
+
+    <!-- Games Tab -->
+    <div id="games-tab" class="tab-content">
+    <section id="game-history-section">
+      <div id="pagination-top" class="pagination"></div>
       <div id="game-history"></div>
+      <div id="pagination-bottom" class="pagination"></div>
     </section>
     </div>
 
@@ -424,6 +472,7 @@
     const MIN_SCORE = 0;
     const MAX_SCORE = 10;
     const DEFAULT_SCORE = 0;
+    const GAMES_PER_PAGE = 10;
     
     const DOM_IDS = {
       PLAYER_POOL: 'player-pool',
@@ -434,10 +483,13 @@
       TEAM1_SCORE: 'team1-score',
       TEAM2_SCORE: 'team2-score',
       GAME_HISTORY: 'game-history',
+      PAGINATION_TOP: 'pagination-top',
+      PAGINATION_BOTTOM: 'pagination-bottom',
       TEAM_STATS: 'team-stats',
       PLAYER_STATS: 'player-stats',
       LOG_GAME_TAB: 'log-game-tab',
-      HISTORY_TAB: 'history-tab'
+      HISTORY_TAB: 'history-tab',
+      GAMES_TAB: 'games-tab'
     };
     
     const CSS_CLASSES = {
@@ -463,7 +515,8 @@
     
     const TABS = {
       LOG_GAME: 'log-game',
-      HISTORY: 'history'
+      STATISTICS: 'statistics',
+      GAMES: 'games'
     };
 
     // ============================================================================
@@ -477,6 +530,7 @@
     let teamSortDirection = 'desc';
     let playerSortColumn = 'wins';
     let playerSortDirection = 'desc';
+    let currentPage = 1;
 
     // ============================================================================
     // UTILITY FUNCTIONS
@@ -799,21 +853,69 @@
       
       if (games.length === 0) {
         history.innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
-        getElement(DOM_IDS.TEAM_STATS).innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
-        getElement(DOM_IDS.PLAYER_STATS).innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
+        getElement(DOM_IDS.PAGINATION_TOP).innerHTML = '';
+        getElement(DOM_IDS.PAGINATION_BOTTOM).innerHTML = '';
         return;
       }
       
-      // Render statistics
-      renderTeamStats();
-      renderPlayerStats();
+      // Calculate pagination
+      const totalPages = Math.ceil(games.length / GAMES_PER_PAGE);
+      const startIndex = (currentPage - 1) * GAMES_PER_PAGE;
+      const endIndex = startIndex + GAMES_PER_PAGE;
+      const paginatedGames = games.slice(startIndex, endIndex);
       
       // Render game history
       history.innerHTML = '';
       
-      games.forEach(game => {
+      paginatedGames.forEach(game => {
         history.appendChild(createGameEntry(game));
       });
+      
+      // Render pagination controls
+      renderPagination(totalPages);
+    };
+    
+    const renderPagination = (totalPages) => {
+      if (totalPages <= 1) {
+        getElement(DOM_IDS.PAGINATION_TOP).innerHTML = '';
+        getElement(DOM_IDS.PAGINATION_BOTTOM).innerHTML = '';
+        return;
+      }
+      
+      const startGame = (currentPage - 1) * GAMES_PER_PAGE + 1;
+      const endGame = Math.min(currentPage * GAMES_PER_PAGE, games.length);
+      
+      let html = `
+        <button class="pagination-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>
+          &laquo; First
+        </button>
+        <button class="pagination-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+          &lsaquo; Prev
+        </button>
+        <span class="pagination-info">
+          Page ${currentPage} of ${totalPages} (${startGame}-${endGame} of ${games.length} games)
+        </span>
+        <button class="pagination-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+          Next &rsaquo;
+        </button>
+        <button class="pagination-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>
+          Last &raquo;
+        </button>
+      `;
+      
+      getElement(DOM_IDS.PAGINATION_TOP).innerHTML = html;
+      getElement(DOM_IDS.PAGINATION_BOTTOM).innerHTML = html;
+    };
+    
+    const goToPage = (page) => {
+      const totalPages = Math.ceil(games.length / GAMES_PER_PAGE);
+      if (page < 1 || page > totalPages) return;
+      
+      currentPage = page;
+      renderGameHistory();
+      
+      // Scroll to top of game history
+      getElement(DOM_IDS.GAME_HISTORY).scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
     
     const createGameEntry = (game) => {
@@ -1238,7 +1340,8 @@
         await saveGame(game);
         resetSelection();
         alert(MESSAGES.GAME_LOGGED);
-        switchTab(TABS.HISTORY);
+        currentPage = 1; // Reset to first page to see the new game
+        switchTab(TABS.GAMES);
       } catch (error) {
         alert('Failed to save game. Please try again.');
       }
@@ -1309,9 +1412,17 @@
           contentId: DOM_IDS.LOG_GAME_TAB,
           buttonIndex: 0
         },
-        [TABS.HISTORY]: {
+        [TABS.STATISTICS]: {
           contentId: DOM_IDS.HISTORY_TAB,
           buttonIndex: 1,
+          onActivate: () => {
+            renderTeamStats();
+            renderPlayerStats();
+          }
+        },
+        [TABS.GAMES]: {
+          contentId: DOM_IDS.GAMES_TAB,
+          buttonIndex: 2,
           onActivate: renderGameHistory
         }
       };
