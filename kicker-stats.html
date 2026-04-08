@@ -46,15 +46,79 @@
     
     .team-selection {
       margin: 1rem 0;
-      padding: 1rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      padding: 1.5rem;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .team-selection.team1 {
+      border-color: #4CAF50;
+      background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+    }
+    
+    .team-selection.team2 {
+      border-color: #2196F3;
+      background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%);
+    }
+    
+    .team-selection h3 {
+      margin-top: 0;
+      text-align: center;
+      font-size: 1.1rem;
     }
     
     .selected-players {
-      min-height: 2rem;
-      margin: 0.5rem 0;
+      min-height: 8rem;
+      height: 8rem;
+      margin: 1rem 0 0 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .player-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0.75rem;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      min-width: 80px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      align-self: center;
+    }
+    
+    .player-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .player-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .player-name {
       font-weight: bold;
+      font-size: 0.9rem;
+      text-align: center;
+      word-break: break-word;
+    }
+    
+    .empty-slot {
+      color: #999;
+      text-align: center;
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
     }
     
     .score-input {
@@ -283,17 +347,17 @@
     <!-- Log Game Tab -->
     <div id="log-game-tab" class="tab-content active">
     <section id="log-game-section">
-      <div class="team-selection">
+      <div class="team-selection team1">
         <h3>Team 1</h3>
         <div class="selected-players" id="team1-players">
-          Select 2 players
+          <div class="empty-slot">Select 2 players</div>
         </div>
       </div>
       
-      <div class="team-selection">
+      <div class="team-selection team2">
         <h3>Team 2</h3>
         <div class="selected-players" id="team2-players">
-          Select 2 players
+          <div class="empty-slot">Select 2 players</div>
         </div>
       </div>
       
@@ -428,8 +492,18 @@
     const areTeamsFull = () => 
       isTeamFull(selectedTeam1) && isTeamFull(selectedTeam2);
     
-    const formatTeamDisplay = (team) => 
-      team.length > 0 ? team.join(' & ') : MESSAGES.SELECT_PROMPT;
+    const formatTeamDisplay = (team) => {
+      if (team.length === 0) {
+        return '<div class="empty-slot">Select 2 players</div>';
+      }
+      
+      return team.map(player => `
+        <div class="player-card" onclick="togglePlayerSelection('${player}')">
+          <div class="player-icon">👤</div>
+          <div class="player-name">${player}</div>
+        </div>
+      `).join('');
+    };
     
     const formatDateTime = (isoDate) => {
       const date = new Date(isoDate);
@@ -661,8 +735,8 @@
     };
 
     const updateTeamDisplay = () => {
-      getElement(DOM_IDS.TEAM1_PLAYERS).textContent = formatTeamDisplay(selectedTeam1);
-      getElement(DOM_IDS.TEAM2_PLAYERS).textContent = formatTeamDisplay(selectedTeam2);
+      getElement(DOM_IDS.TEAM1_PLAYERS).innerHTML = formatTeamDisplay(selectedTeam1);
+      getElement(DOM_IDS.TEAM2_PLAYERS).innerHTML = formatTeamDisplay(selectedTeam2);
     };
 
     const resetSelection = () => {
