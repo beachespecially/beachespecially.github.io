@@ -243,6 +243,8 @@
       font-size: 1rem;
       border-bottom: 3px solid transparent;
       transition: all 0.2s;
+      font-weight: bold;
+      min-width: 120px;
     }
     
     .tab:hover {
@@ -251,8 +253,11 @@
     
     .tab.active {
       border-bottom-color: #2196F3;
-      font-weight: bold;
       color: #2196F3;
+    }
+    
+    .tab:not(.active) {
+      opacity: 0.6;
     }
     
     .tab-content {
