@@ -336,7 +336,6 @@
       </div>
       
       <h2>Game History</h2>
-      <button class="btn btn-secondary" onclick="clearHistory()">Clear All History</button>
       <div id="game-history"></div>
     </section>
     </div>
@@ -395,7 +394,6 @@
       SELECT_TEAM: (team) => `Please select ${PLAYERS_PER_TEAM} players for Team ${team}`,
       INVALID_SCORES: `Scores must be between ${MIN_SCORE} and ${MAX_SCORE}`,
       GAME_LOGGED: 'Game logged successfully!',
-      CONFIRM_CLEAR: 'Are you sure you want to clear all game history? This cannot be undone.',
       SELECT_PROMPT: `Select ${PLAYERS_PER_TEAM} players`
     };
     
@@ -568,22 +566,6 @@
         games.unshift(game);
       } catch (error) {
         console.error('Error saving game:', error);
-        throw error;
-      }
-    };
-
-    const clearAllGames = async () => {
-      try {
-        const { error } = await supabaseClient
-          .from('games')
-          .delete()
-          .gte('id', 0); // Delete all rows
-        
-        if (error) throw error;
-        
-        games = [];
-      } catch (error) {
-        console.error('Error clearing games:', error);
         throw error;
       }
     };
@@ -1227,17 +1209,6 @@
         score1: scores.team1,
         score2: scores.team2
       };
-    };
-    
-    const clearHistory = async () => {
-      if (!confirm(MESSAGES.CONFIRM_CLEAR)) return;
-      
-      try {
-        await clearAllGames();
-        renderGameHistory();
-      } catch (error) {
-        alert('Failed to clear history. Please try again.');
-      }
     };
 
     // ============================================================================
