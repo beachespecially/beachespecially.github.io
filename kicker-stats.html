@@ -1231,14 +1231,13 @@
           <thead>
             <tr>
               <th>Team</th>
+              <th class="sortable ${teamSortColumn === 'games' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('games')">Games</th>
               <th class="sortable ${teamSortColumn === 'wins' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('wins')">W</th>
               <th class="sortable ${teamSortColumn === 'losses' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('losses')">L</th>
-              <th class="sortable ${teamSortColumn === 'draws' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('draws')">D</th>
               <th class="sortable ${teamSortColumn === 'winPct' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('winPct')">Win%</th>
               <th class="sortable ${teamSortColumn === 'goalsFor' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('goalsFor')">GS</th>
               <th class="sortable ${teamSortColumn === 'goalsAgainst' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('goalsAgainst')">GA</th>
               <th class="sortable ${teamSortColumn === 'goalDiff' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('goalDiff')">GD</th>
-              <th class="sortable ${teamSortColumn === 'games' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('games')">Games</th>
               <th>Form (Last 5)</th>
             </tr>
           </thead>
@@ -1254,14 +1253,13 @@
         html += `
           <tr>
             <td><strong>${team}</strong></td>
+            <td>${stats.games}</td>
             <td class="stat-number">${stats.wins}</td>
             <td>${stats.losses}</td>
-            <td>${stats.draws}</td>
             <td>${winPct}%</td>
             <td>${stats.goalsFor}</td>
             <td>${stats.goalsAgainst}</td>
             <td>${gdDisplay}</td>
-            <td>${stats.games}</td>
             <td>${formDisplay}</td>
           </tr>
         `;
@@ -1325,16 +1323,15 @@
           <thead>
             <tr>
               <th>Player</th>
+              <th class="sortable ${playerSortColumn === 'games' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('games')">Games</th>
               <th class="sortable ${playerSortColumn === 'wins' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('wins')">W</th>
               <th class="sortable ${playerSortColumn === 'losses' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('losses')">L</th>
-              <th class="sortable ${playerSortColumn === 'draws' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('draws')">D</th>
               <th class="sortable ${playerSortColumn === 'winPct' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('winPct')">Win%</th>
               <th class="sortable ${playerSortColumn === 'goalsFor' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('goalsFor')">GS</th>
               <th class="sortable ${playerSortColumn === 'goalsAgainst' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('goalsAgainst')">GA</th>
               <th class="sortable ${playerSortColumn === 'goalDiff' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('goalDiff')">GD</th>
-              <th class="sortable ${playerSortColumn === 'games' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('games')">Games</th>
-              <th class="sortable ${playerSortColumn === 'blackWins' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('blackWins')" title="Black W-L-D">⚫ W-L-D</th>
-              <th class="sortable ${playerSortColumn === 'whiteWins' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('whiteWins')" title="White W-L-D">⚪ W-L-D</th>
+              <th class="sortable ${playerSortColumn === 'blackWins' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('blackWins')" title="Black W-L">⚫ W-L</th>
+              <th class="sortable ${playerSortColumn === 'whiteWins' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('whiteWins')" title="White W-L">⚪ W-L</th>
               <th>Best Partner</th>
               <th>Fav. Opp</th>
               <th>Least Fav. Opp</th>
@@ -1351,20 +1348,19 @@
         const favOpponent = getFavoriteOpponent(stats.opponents);
         const leastFavOpponent = getLeastFavoriteOpponent(stats.opponents);
         
-        const blackRecord = `${stats.blackWins || 0}-${stats.blackLosses || 0}-${stats.blackDraws || 0}`;
-        const whiteRecord = `${stats.whiteWins || 0}-${stats.whiteLosses || 0}-${stats.whiteDraws || 0}`;
+        const blackRecord = `${stats.blackWins || 0}-${stats.blackLosses || 0}`;
+        const whiteRecord = `${stats.whiteWins || 0}-${stats.whiteLosses || 0}`;
         
         html += `
           <tr>
             <td><strong>${player}</strong></td>
+            <td>${stats.games}</td>
             <td class="stat-number">${stats.wins}</td>
             <td>${stats.losses}</td>
-            <td>${stats.draws}</td>
             <td>${winPct}%</td>
             <td>${stats.goalsFor}</td>
             <td>${stats.goalsAgainst}</td>
             <td>${gdDisplay}</td>
-            <td>${stats.games}</td>
             <td>${blackRecord}</td>
             <td>${whiteRecord}</td>
             <td>${bestPartner}</td>
