@@ -372,6 +372,8 @@
       gap: 0;
       margin: 1rem 0;
       border-bottom: 2px solid #ddd;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     
     .tab {
@@ -384,6 +386,15 @@
       transition: all 0.2s;
       font-weight: bold;
       min-width: 120px;
+      flex-shrink: 0;
+    }
+    
+    @media (max-width: 600px) {
+      .tab {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+        min-width: 90px;
+      }
     }
     
     .tab:hover {
@@ -1944,6 +1955,21 @@
       currentTab = tabName;
       deactivateAllTabs();
       activateTab(tabName);
+      updateUrlHash(tabName);
+    };
+    
+    const updateUrlHash = (tabName) => {
+      // Update URL hash without scrolling
+      history.replaceState(null, null, '#' + tabName);
+    };
+    
+    const getTabFromHash = () => {
+      const hash = window.location.hash.substring(1); // Remove the '#'
+      // Check if the hash corresponds to a valid tab
+      if (hash && Object.values(TABS).includes(hash)) {
+        return hash;
+      }
+      return TABS.LOG_GAME; // Default tab
     };
     
     const deactivateAllTabs = () => {
@@ -2126,6 +2152,20 @@
       // Render UI
       renderPlayerPool();
       renderGameHistory();
+      
+      // Check URL hash and switch to the appropriate tab
+      const initialTab = getTabFromHash();
+      if (initialTab !== TABS.LOG_GAME) {
+        switchTab(initialTab);
+      }
+      
+      // Listen for hash changes (back/forward navigation)
+      window.addEventListener('hashchange', () => {
+        const tabFromHash = getTabFromHash();
+        if (tabFromHash !== currentTab) {
+          switchTab(tabFromHash);
+        }
+      });
     };
 
     init();
