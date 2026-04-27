@@ -431,6 +431,7 @@
       border-radius: 8px;
       padding: 0.75rem;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      min-width: 280px;
     }
     
     .leaderboard-card h3 {
@@ -471,6 +472,10 @@
       font-size: 1.1rem;
     }
     
+    .centered-card {
+      grid-column: 2 / 3;
+    }
+    
     @media (max-width: 1200px) {
       .leaderboard-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -487,6 +492,10 @@
       }
       
       .leaderboard-card h2 {
+        grid-column: 1;
+      }
+      
+      .centered-card {
         grid-column: 1;
       }
     }
@@ -622,6 +631,12 @@
         <div class="leaderboard-card">
           <h3>Best Form (Hot Streak)</h3>
           <div id="top-teams-form"></div>
+        </div>
+        
+        <h2 class="section-header">💀 Wall of Shame</h2>
+        
+        <div class="leaderboard-card centered-card">
+          <div id="wall-of-shame"></div>
         </div>
         
         <h2 class="section-header">⭐ Player Leaderboards</h2>
@@ -1627,6 +1642,37 @@
         .slice(0, 3);
       renderTopTeamsForm(topTeamsForm);
       
+      // Teams - Wall of Shame (lost with 0 goals)
+      const wallOfShame = [];
+      games.forEach(game => {
+        const team1Name = normalizeTeam(game.team1);
+        const team2Name = normalizeTeam(game.team2);
+        
+        // Check if team1 lost with 0 goals
+        if (game.score1 === 0 && game.score2 > game.score1) {
+          wallOfShame.push({
+            team: team1Name,
+            opponent: team2Name,
+            score: `${game.score1}:${game.score2}`,
+            date: game.created_at
+          });
+        }
+        
+        // Check if team2 lost with 0 goals
+        if (game.score2 === 0 && game.score1 > game.score2) {
+          wallOfShame.push({
+            team: team2Name,
+            opponent: team1Name,
+            score: `${game.score2}:${game.score1}`,
+            date: game.created_at
+          });
+        }
+      });
+      
+      // Sort by most recent first
+      wallOfShame.sort((a, b) => new Date(b.date) - new Date(a.date));
+      renderWallOfShame(wallOfShame);
+      
       // Players - Best Win Percentage (minimum 5 games)
       const topPlayersWinPct = Object.entries(playerStats)
         .filter(([_, stats]) => stats.games >= 5)
@@ -1649,15 +1695,18 @@
             game.team1.includes(player) || game.team2.includes(player)
           );
           
+          // Build form array (W/L)
+          const form = [];
           let formScore = 0;
           recentGames.forEach((game, index) => {
             const weight = recentGames.length - index;
             const playerWon = (game.team1.includes(player) && game.score1 > game.score2) ||
                              (game.team2.includes(player) && game.score2 > game.score1);
+            form.push(playerWon ? 'W' : 'L');
             if (playerWon) formScore += weight;
           });
           
-          return [player, { ...stats, formScore, recentGames: recentGames.length }];
+          return [player, { ...stats, formScore, form, recentGames: recentGames.length }];
         })
         .filter(([_, stats]) => stats.recentGames >= 3)
         .sort((a, b) => b[1].formScore - a[1].formScore)
@@ -1792,6 +1841,29 @@
       container.innerHTML = html;
     };
     
+    const renderWallOfShame = (wallOfShame) => {
+      const container = document.getElementById('wall-of-shame');
+      if (wallOfShame.length === 0) {
+        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">No shame yet! 🎉</p>';
+        return;
+      }
+      
+      let html = '<table class="stats-table"><thead><tr><th>Team</th><th>vs</th><th>Score</th></tr></thead><tbody>';
+      
+      wallOfShame.forEach((entry) => {
+        html += `
+          <tr>
+            <td><strong>${entry.team}</strong></td>
+            <td>${entry.opponent}</td>
+            <td class="stat-number">${entry.score}</td>
+          </tr>
+        `;
+      });
+      
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    };
+    
     const renderTopPlayersForm = (topPlayers) => {
       const container = document.getElementById('top-players-form');
       if (topPlayers.length === 0) {
@@ -1799,27 +1871,17 @@
         return;
       }
       
-      let html = '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Recent</th></tr></thead><tbody>';
+      let html = '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Form</th></tr></thead><tbody>';
       
       topPlayers.forEach(([player, stats], index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        // Calculate recent wins for display
-        const recentGames = games.slice(0, 5).filter(game => 
-          game.team1.includes(player) || game.team2.includes(player)
-        );
-        
-        const recentWins = recentGames.filter(game => 
-          (game.team1.includes(player) && game.score1 > game.score2) ||
-          (game.team2.includes(player) && game.score2 > game.score1)
-        ).length;
-        
-        const formText = `${recentWins}/${recentGames.length}`;
+        const formDisplay = getFormDisplay(stats.form);
         
         html += `
           <tr>
             <td>${medal}</td>
             <td><strong>${player}</strong></td>
-            <td class="stat-number">${formText}</td>
+            <td>${formDisplay}</td>
           </tr>
         `;
       });
@@ -2073,14 +2135,19 @@
           async (payload) => {
             console.log('New game detected:', payload.new);
             
-            // Add the new game to our local games array
-            games.unshift(payload.new);
+            // Check if the game already exists (to avoid duplicate from optimistic update)
+            const gameExists = games.some(g => g.id === payload.new.id);
             
-            // Show notification
-            showNotification('New game added!');
-            
-            // Refresh the current tab's display
-            refreshCurrentTab();
+            if (!gameExists) {
+              // Add the new game to our local games array
+              games.unshift(payload.new);
+              
+              // Show notification
+              showNotification('New game added!');
+              
+              // Refresh the current tab's display
+              refreshCurrentTab();
+            }
           }
         )
         .on(
