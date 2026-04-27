@@ -2162,9 +2162,94 @@
               refreshCurrentTab();
             }
           }
+<<<<<<< Updated upstream
         )
         .on(
           'postgres_changes',
+=======
+
+          // Get service worker registration
+          const registration = await navigator.serviceWorker.ready;
+
+          const vapidPublicKey =
+            "BO4qeLpd_8Zyrdq0rnjH1Sh2D7EAVsu45_sXo-cAvuNm8Nf0yzu-of9LYyUn3o_xFuCfNBlDJIXtK7uaFFWa8EY";
+
+          // Subscribe to push notifications
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          });
+
+          pushSubscription = subscription;
+
+          // Store subscription in Supabase
+          await saveSubscription(subscription);
+
+          showNotification(
+            "🔔 You'll now receive Wall of Shame notifications!",
+          );
+          updateNotificationUI();
+        } catch (error) {
+          console.error("Failed to subscribe to push notifications:", error);
+          alert("Failed to enable notifications: " + error.message);
+        }
+      };
+
+      const unsubscribeFromPush = async () => {
+        try {
+          if (pushSubscription) {
+            await pushSubscription.unsubscribe();
+            await removeSubscription(pushSubscription);
+            pushSubscription = null;
+            showNotification("🔕 Push notifications disabled");
+            updateNotificationUI();
+          }
+        } catch (error) {
+          console.error("Failed to unsubscribe:", error);
+        }
+      };
+
+      const saveSubscription = async (subscription) => {
+        try {
+          const { error } = await supabaseClient
+            .from("push_subscriptions")
+            .upsert(
+              {
+                endpoint: subscription.endpoint,
+                keys: subscription.toJSON().keys,
+                subscription_data: subscription.toJSON(),
+                updated_at: new Date().toISOString(),
+              },
+              {
+                onConflict: "endpoint",
+              },
+            );
+
+          if (error) throw error;
+          console.log("Subscription saved");
+        } catch (error) {
+          console.error("Failed to save subscription:", error);
+        }
+      };
+
+      const removeSubscription = async (subscription) => {
+        try {
+          const { error } = await supabaseClient
+            .from("push_subscriptions")
+            .delete()
+            .eq("endpoint", subscription.endpoint);
+
+          if (error) throw error;
+          console.log("Subscription removed");
+        } catch (error) {
+          console.error("Failed to remove subscription:", error);
+        }
+      };
+
+      const sendPushNotificationToAll = async (message) => {
+        const { data, error } = await supabaseClient.functions.invoke(
+          "kicker-stats-api",
+>>>>>>> Stashed changes
           {
             event: 'DELETE',
             schema: 'public',
