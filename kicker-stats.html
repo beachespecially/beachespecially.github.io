@@ -1,1455 +1,1617 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>Kicker Statistics</title>
-  <meta name="author" content="Kai Mueller">
-  <meta name="description" content="Kicker statistics keeper">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  
-  <!-- Web App Manifest -->
-  <link rel="manifest" href="/manifest.json">
-  
-  <!-- Theme Color -->
-  <meta name="theme-color" content="#2196F3">
-  
-  <!-- iOS Support -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Kicker Stats">
-  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
-  <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png">
+  <head>
+    <meta charset="utf-8" />
+    <title>Kicker Statistics</title>
+    <meta name="author" content="Kai Mueller" />
+    <meta name="description" content="Kicker statistics keeper" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <link href="enough.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    /* Mobile-first basic styling */
-    .player-pool {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin: 1rem 0;
-    }
-    
-    .player-btn {
-      padding: 0.5rem 1rem;
-      border: 2px solid #333;
-      background: white;
-      cursor: pointer;
-      border-radius: 4px;
-      font-size: 1rem;
-    }
-    
-    .player-btn.selected-team1 {
-      background: #4CAF50;
-      color: white;
-      border-color: #4CAF50;
-    }
-    
-    .player-btn.selected-team2 {
-      background: #2196F3;
-      color: white;
-      border-color: #2196F3;
-    }
-    
-    .player-btn.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    
-    .team-selection {
-      margin: 1rem 0;
-      padding: 1.5rem;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .team-selection.team1 {
-      border-color: #333;
-      background: linear-gradient(135deg, #e8e8e8 0%, #ffffff 100%);
-    }
-    
-    .team-selection.team2 {
-      border-color: #ddd;
-      background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
-    }
-    
-    .team-color-indicator {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      margin-left: 0.5rem;
-      vertical-align: middle;
-      border: 2px solid #666;
-    }
-    
-    .team-color-indicator.black {
-      background-color: #000;
-    }
-    
-    .team-color-indicator.white {
-      background-color: #fff;
-      border: 2px solid #333;
-    }
-    
-    .team-selection h3 {
-      margin-top: 0;
-      text-align: center;
-      font-size: 1.1rem;
-    }
-    
-    .selected-players {
-      min-height: 8rem;
-      height: 8rem;
-      margin: 1rem 0 0 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-    
-    .player-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 0.75rem;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      min-width: 80px;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-      align-self: center;
-    }
-    
-    .player-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-    
-    .player-icon {
-      font-size: 2.5rem;
-      margin-bottom: 0.5rem;
-    }
-    
-    .player-name {
-      font-weight: bold;
-      font-size: 0.9rem;
-      text-align: center;
-      word-break: break-word;
-    }
-    
-    .empty-slot {
-      color: #999;
-      text-align: center;
-      font-style: italic;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-    }
-    
-    .pagination {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 0.5rem;
-      margin: 1.5rem 0;
-      flex-wrap: wrap;
-    }
-    
-    .pagination-btn {
-      padding: 0.5rem 1rem;
-      border: 1px solid #ddd;
-      background: white;
-      cursor: pointer;
-      border-radius: 4px;
-      font-size: 0.9rem;
-      transition: all 0.2s;
-    }
-    
-    .pagination-btn:hover:not(:disabled) {
-      background: #f5f5f5;
-      border-color: #2196F3;
-    }
-    
-    .pagination-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    
-    .pagination-btn.active {
-      background: #2196F3;
-      color: white;
-      border-color: #2196F3;
-    }
-    
-    .pagination-info {
-      font-size: 0.9rem;
-      color: #666;
-      padding: 0 0.5rem;
-    }
-    
-    .score-input {
-      width: 60px;
-      padding: 0.5rem;
-      font-size: 1.2rem;
-      text-align: center;
-      margin: 0 0.5rem;
-    }
-    
-    .game-entry {
-      padding: 1rem;
-      margin: 0.5rem 0;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background: #f9f9f9;
-    }
-    
-    .btn {
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-      cursor: pointer;
-      border: none;
-      border-radius: 4px;
-      margin: 0.5rem 0.5rem 0.5rem 0;
-    }
-    
-    .btn-primary {
-      background: #2196F3;
-      color: white;
-    }
-    
-    .btn-success {
-      background: #4CAF50;
-      color: white;
-    }
-    
-    .btn-secondary {
-      background: #666;
-      color: white;
-    }
-    
-    .btn-danger {
-      background: #f44336;
-      color: white;
-    }
-    
-    .btn-danger:hover {
-      background: #d32f2f;
-    }
-    
-    .delete-btn {
-      padding: 0.4rem 0.8rem;
-      font-size: 0.85rem;
-      float: right;
-    }
-    
-    .score-display {
-      font-size: 1.5rem;
-      font-weight: bold;
-      text-align: center;
-      margin: 1rem 0;
-    }
-    
-    .add-player-form {
-      margin: 1rem 0;
-    }
-    
-    .add-player-form input {
-      padding: 0.5rem;
-      font-size: 1rem;
-      margin-right: 0.5rem;
-    }
-    
-    section {
-      margin: 2rem 0;
-    }
-    
-    .hidden {
-      display: none;
-    }
-    
-    .stats-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1rem 0;
-      font-size: 0.9rem;
-    }
-    
-    .stats-table th,
-    .stats-table td {
-      padding: 0.5rem;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-    
-    .stats-table th {
-      background: #f5f5f5;
-      font-weight: bold;
-      cursor: pointer;
-      user-select: none;
-      position: relative;
-      padding-right: 1.5rem;
-    }
-    
-    .stats-table th:hover {
-      background: #e8e8e8;
-    }
-    
-    .stats-table th.sortable::after {
-      content: '⇅';
-      position: absolute;
-      right: 0.5rem;
-      opacity: 0.3;
-    }
-    
-    .stats-table th.sorted-asc::after {
-      content: '↑';
-      opacity: 1;
-      color: #2196F3;
-    }
-    
-    .stats-table th.sorted-desc::after {
-      content: '↓';
-      opacity: 1;
-      color: #2196F3;
-    }
-    
-    .stats-table tr:hover {
-      background: #f9f9f9;
-    }
-    
-    .stats-section {
-      margin: 2rem 0;
-    }
-    
-    .stat-number {
-      font-weight: bold;
-      color: #2196F3;
-    }
-    
-    .form-indicator {
-      display: inline-block;
-      width: 1.2rem;
-      height: 1.2rem;
-      line-height: 1.2rem;
-      text-align: center;
-      margin: 0 0.1rem;
-      font-weight: bold;
-      border-radius: 2px;
-    }
-    
-    .form-win {
-      color: #4CAF50;
-    }
-    
-    .form-loss {
-      color: #f44336;
-    }
-    
-    @media (max-width: 600px) {
-      .stats-table {
-        font-size: 0.8rem;
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#2196F3" />
+
+    <!-- iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Kicker Stats" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
+
+    <link href="enough.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+      /* Mobile-first basic styling */
+      .player-pool {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0;
       }
-      
+
+      .player-btn {
+        padding: 0.5rem 1rem;
+        border: 2px solid #333;
+        background: white;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 1rem;
+      }
+
+      .player-btn.selected-team1 {
+        background: #4caf50;
+        color: white;
+        border-color: #4caf50;
+      }
+
+      .player-btn.selected-team2 {
+        background: #2196f3;
+        color: white;
+        border-color: #2196f3;
+      }
+
+      .player-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .team-selection {
+        margin: 1rem 0;
+        padding: 1.5rem;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .team-selection.team1 {
+        border-color: #333;
+        background: linear-gradient(135deg, #e8e8e8 0%, #ffffff 100%);
+      }
+
+      .team-selection.team2 {
+        border-color: #ddd;
+        background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+      }
+
+      .team-color-indicator {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin-left: 0.5rem;
+        vertical-align: middle;
+        border: 2px solid #666;
+      }
+
+      .team-color-indicator.black {
+        background-color: #000;
+      }
+
+      .team-color-indicator.white {
+        background-color: #fff;
+        border: 2px solid #333;
+      }
+
+      .team-selection h3 {
+        margin-top: 0;
+        text-align: center;
+        font-size: 1.1rem;
+      }
+
+      .selected-players {
+        min-height: 8rem;
+        height: 8rem;
+        margin: 1rem 0 0 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .player-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0.75rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        min-width: 80px;
+        cursor: pointer;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+        align-self: center;
+      }
+
+      .player-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      .player-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .player-name {
+        font-weight: bold;
+        font-size: 0.9rem;
+        text-align: center;
+        word-break: break-word;
+      }
+
+      .empty-slot {
+        color: #999;
+        text-align: center;
+        font-style: italic;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+      }
+
+      .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 1.5rem 0;
+        flex-wrap: wrap;
+      }
+
+      .pagination-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid #ddd;
+        background: white;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+      }
+
+      .pagination-btn:hover:not(:disabled) {
+        background: #f5f5f5;
+        border-color: #2196f3;
+      }
+
+      .pagination-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .pagination-btn.active {
+        background: #2196f3;
+        color: white;
+        border-color: #2196f3;
+      }
+
+      .pagination-info {
+        font-size: 0.9rem;
+        color: #666;
+        padding: 0 0.5rem;
+      }
+
+      .score-input {
+        width: 60px;
+        padding: 0.5rem;
+        font-size: 1.2rem;
+        text-align: center;
+        margin: 0 0.5rem;
+      }
+
+      .game-entry {
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: #f9f9f9;
+      }
+
+      .btn {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        margin: 0.5rem 0.5rem 0.5rem 0;
+      }
+
+      .btn-primary {
+        background: #2196f3;
+        color: white;
+      }
+
+      .btn-success {
+        background: #4caf50;
+        color: white;
+      }
+
+      .btn-secondary {
+        background: #666;
+        color: white;
+      }
+
+      .btn-danger {
+        background: #f44336;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #d32f2f;
+      }
+
+      .delete-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        float: right;
+      }
+
+      .score-display {
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-align: center;
+        margin: 1rem 0;
+      }
+
+      .add-player-form {
+        margin: 1rem 0;
+      }
+
+      .add-player-form input {
+        padding: 0.5rem;
+        font-size: 1rem;
+        margin-right: 0.5rem;
+      }
+
+      section {
+        margin: 2rem 0;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .stats-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+        font-size: 0.9rem;
+      }
+
       .stats-table th,
       .stats-table td {
-        padding: 0.3rem;
+        padding: 0.5rem;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
       }
-    }
-    
-    .plus-icon {
-      cursor: pointer;
-      color: #2196F3;
-      font-size: 1.5rem;
-      margin-left: 0.5rem;
-      user-select: none;
-    }
-    
-    .plus-icon:hover {
-      color: #1976D2;
-    }
-    
-    .pool-header {
-      display: flex;
-      align-items: center;
-    }
-    
-    .tabs {
-      display: flex;
-      gap: 0;
-      margin: 1rem 0;
-      border-bottom: 2px solid #ddd;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    
-    .tab {
-      padding: 0.75rem 1.5rem;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
-      border-bottom: 3px solid transparent;
-      transition: all 0.2s;
-      font-weight: bold;
-      min-width: 120px;
-      flex-shrink: 0;
-    }
-    
-    @media (max-width: 600px) {
+
+      .stats-table th {
+        background: #f5f5f5;
+        font-weight: bold;
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        padding-right: 1.5rem;
+      }
+
+      .stats-table th:hover {
+        background: #e8e8e8;
+      }
+
+      .stats-table th.sortable::after {
+        content: "⇅";
+        position: absolute;
+        right: 0.5rem;
+        opacity: 0.3;
+      }
+
+      .stats-table th.sorted-asc::after {
+        content: "↑";
+        opacity: 1;
+        color: #2196f3;
+      }
+
+      .stats-table th.sorted-desc::after {
+        content: "↓";
+        opacity: 1;
+        color: #2196f3;
+      }
+
+      .stats-table tr:hover {
+        background: #f9f9f9;
+      }
+
+      .stats-section {
+        margin: 2rem 0;
+      }
+
+      .stat-number {
+        font-weight: bold;
+        color: #2196f3;
+      }
+
+      .form-indicator {
+        display: inline-block;
+        width: 1.2rem;
+        height: 1.2rem;
+        line-height: 1.2rem;
+        text-align: center;
+        margin: 0 0.1rem;
+        font-weight: bold;
+        border-radius: 2px;
+      }
+
+      .form-win {
+        color: #4caf50;
+      }
+
+      .form-loss {
+        color: #f44336;
+      }
+
+      @media (max-width: 600px) {
+        .stats-table {
+          font-size: 0.8rem;
+        }
+
+        .stats-table th,
+        .stats-table td {
+          padding: 0.3rem;
+        }
+      }
+
+      .plus-icon {
+        cursor: pointer;
+        color: #2196f3;
+        font-size: 1.5rem;
+        margin-left: 0.5rem;
+        user-select: none;
+      }
+
+      .plus-icon:hover {
+        color: #1976d2;
+      }
+
+      .pool-header {
+        display: flex;
+        align-items: center;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 0;
+        margin: 1rem 0;
+        border-bottom: 2px solid #ddd;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
       .tab {
-        padding: 0.6rem 1rem;
-        font-size: 0.9rem;
-        min-width: 90px;
+        padding: 0.75rem 1.5rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s;
+        font-weight: bold;
+        min-width: 120px;
+        flex-shrink: 0;
       }
-    }
-    
-    .tab:hover {
-      background: #f5f5f5;
-    }
-    
-    .tab.active {
-      border-bottom-color: #2196F3;
-      color: #2196F3;
-    }
-    
-    .tab:not(.active) {
-      opacity: 0.6;
-    }
-    
-    .tab-content {
-      display: none;
-    }
-    
-    .tab-content.active {
-      display: block;
-    }
-    
-    .leaderboard-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-      margin: 0.5rem 0;
-    }
-    
-    .leaderboard-card {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 0.75rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-      min-width: 280px;
-    }
-    
-    .leaderboard-card h3 {
-      margin: 0 0 0.5rem 0;
-      font-size: 0.95rem;
-      color: #333;
-      border-bottom: 2px solid #2196F3;
-      padding-bottom: 0.4rem;
-    }
-    
-    .leaderboard-card h2 {
-      margin: 0 0 1rem 0;
-      font-size: 1.2rem;
-      text-align: center;
-      grid-column: 1 / -1;
-    }
-    
-    .leaderboard-card .stats-table {
-      margin: 0;
-      font-size: 0.85rem;
-    }
-    
-    .leaderboard-card .stats-table th,
-    .leaderboard-card .stats-table td {
-      padding: 0.4rem 0.3rem;
-    }
-    
-    .leaderboard-card .stats-table th {
-      font-size: 0.8rem;
-    }
-    
-    .section-header {
-      grid-column: 1 / -1;
-      text-align: center;
-      margin: 0.5rem 0 0.25rem 0;
-      padding-bottom: 0.5rem;
-      border-bottom: 2px solid #ddd;
-      font-size: 1.1rem;
-    }
-    
-    .centered-card {
-      grid-column: 2 / 3;
-    }
-    
-    @media (max-width: 1200px) {
+
+      @media (max-width: 600px) {
+        .tab {
+          padding: 0.6rem 1rem;
+          font-size: 0.9rem;
+          min-width: 90px;
+        }
+      }
+
+      .tab:hover {
+        background: #f5f5f5;
+      }
+
+      .tab.active {
+        border-bottom-color: #2196f3;
+        color: #2196f3;
+      }
+
+      .tab:not(.active) {
+        opacity: 0.6;
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
       .leaderboard-grid {
-        grid-template-columns: repeat(2, 1fr);
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 0.5rem 0;
       }
-    }
-    
-    @media (max-width: 768px) {
-      .leaderboard-grid {
-        grid-template-columns: 1fr;
+
+      .leaderboard-card {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 0.75rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        min-width: 280px;
       }
-      
-      .section-header {
-        grid-column: 1;
+
+      .leaderboard-card h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.95rem;
+        color: #333;
+        border-bottom: 2px solid #2196f3;
+        padding-bottom: 0.4rem;
       }
-      
+
       .leaderboard-card h2 {
-        grid-column: 1;
+        margin: 0 0 1rem 0;
+        font-size: 1.2rem;
+        text-align: center;
+        grid-column: 1 / -1;
       }
-      
+
+      .leaderboard-card .stats-table {
+        margin: 0;
+        font-size: 0.85rem;
+      }
+
+      .leaderboard-card .stats-table th,
+      .leaderboard-card .stats-table td {
+        padding: 0.4rem 0.3rem;
+      }
+
+      .leaderboard-card .stats-table th {
+        font-size: 0.8rem;
+      }
+
+      .section-header {
+        grid-column: 1 / -1;
+        text-align: center;
+        margin: 0.5rem 0 0.25rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #ddd;
+        font-size: 1.1rem;
+      }
+
       .centered-card {
-        grid-column: 1;
+        grid-column: 2 / 3;
       }
-    }
-    
-    .realtime-notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #4CAF50;
-      color: white;
-      padding: 1rem 1.5rem;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      z-index: 1000;
-      animation: slideIn 0.3s ease-out;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    @keyframes slideIn {
-      from {
-        transform: translateX(400px);
-        opacity: 0;
+
+      @media (max-width: 1200px) {
+        .leaderboard-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
       }
-      to {
-        transform: translateX(0);
-        opacity: 1;
+
+      @media (max-width: 768px) {
+        .leaderboard-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .section-header {
+          grid-column: 1;
+        }
+
+        .leaderboard-card h2 {
+          grid-column: 1;
+        }
+
+        .centered-card {
+          grid-column: 1;
+        }
       }
-    }
-    
-    .realtime-notification.fade-out {
-      animation: fadeOut 0.3s ease-out forwards;
-    }
-    
-    @keyframes fadeOut {
-      from {
-        opacity: 1;
+
+      .realtime-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4caf50;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        animation: slideIn 0.3s ease-out;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
       }
-      to {
-        opacity: 0;
-        transform: translateX(400px);
+
+      @keyframes slideIn {
+        from {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
       }
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Kicker Statistics</h1>
-  </header>
-  <main>
-    <!-- Tab Navigation -->
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('log-game')">Log Game</button>
-      <button class="tab" onclick="switchTab('statistics')">Statistics</button>
-      <button class="tab" onclick="switchTab('leaderboard')">Leaderboard</button>
-      <button class="tab" onclick="switchTab('games')">History</button>
-    </div>
 
-    <!-- Log Game Tab -->
-    <div id="log-game-tab" class="tab-content active">
-    <section id="log-game-section">
-      <div class="team-selection team1">
-        <h3>Team Black<span class="team-color-indicator black" title="Black"></span></h3>
-        <div class="selected-players" id="team1-players">
-          <div class="empty-slot">Select 2 players</div>
-        </div>
-      </div>
-      
-      <div class="team-selection team2">
-        <h3>Team White<span class="team-color-indicator white" title="White"></span></h3>
-        <div class="selected-players" id="team2-players">
-          <div class="empty-slot">Select 2 players</div>
-        </div>
-      </div>
-      
-      <div class="score-display">
-        <label>Score:</label>
-        <input type="number" id="team1-score" class="score-input" min="0" max="10" value="0" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" />
-        :
-        <input type="number" id="team2-score" class="score-input" min="0" max="10" value="0" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'" />
-      </div>
-      
-      <button class="btn btn-success" onclick="logGame()">Log Game</button>
-      <button class="btn btn-secondary" onclick="resetSelection()">Reset</button>
-      
-      <div class="pool-header">
-        <h3>Player Pool</h3>
-        <span class="plus-icon" onclick="toggleAddPlayer()" title="Add player">+</span>
-      </div>
-      
-      <!-- Add Player Form -->
-      <div id="add-player-form" class="add-player-form hidden">
-        <input type="text" id="new-player-name" placeholder="Player name" />
-        <button class="btn btn-primary" onclick="addPlayer()">Add Player</button>
-      </div>
-      
-      <div id="player-pool" class="player-pool"></div>
-    </section>
-    </div>
-
-    <!-- History Tab -->
-    <div id="history-tab" class="tab-content">
-    <section id="statistics-section">
-      <div class="stats-section">
-        <h3>Team Statistics</h3>
-        <div id="team-stats"></div>
-      </div>
-      
-      <div class="stats-section">
-        <h3>Player Statistics</h3>
-        <div id="player-stats"></div>
-      </div>
-    </section>
-    </div>
-
-    <!-- Leaderboard Tab -->
-    <div id="leaderboard-tab" class="tab-content">
-    <section id="leaderboard-section">
-      <div class="leaderboard-grid">
-        <h2 class="section-header">🏆 Team Leaderboards</h2>
-        
-        <div class="leaderboard-card">
-          <h3>Best Win Percentage</h3>
-          <div id="top-teams-winpct"></div>
-        </div>
-        
-        <div class="leaderboard-card">
-          <h3>Most Wins</h3>
-          <div id="top-teams-wins"></div>
-        </div>
-        
-        <div class="leaderboard-card">
-          <h3>Best Form (Hot Streak)</h3>
-          <div id="top-teams-form"></div>
-        </div>
-        
-        <h2 class="section-header">💀 Wall of Shame</h2>
-        
-        <div class="leaderboard-card centered-card">
-          <div id="wall-of-shame"></div>
-        </div>
-        
-        <h2 class="section-header">⭐ Player Leaderboards</h2>
-        
-        <div class="leaderboard-card">
-          <h3>Best Win Percentage</h3>
-          <div id="top-players-winpct"></div>
-        </div>
-        
-        <div class="leaderboard-card">
-          <h3>Most Wins</h3>
-          <div id="top-players-wins"></div>
-        </div>
-        
-        <div class="leaderboard-card">
-          <h3>Best Form (Hot Streak)</h3>
-          <div id="top-players-form"></div>
-        </div>
-      </div>
-    </section>
-    </div>
-
-    <!-- Games Tab -->
-    <div id="games-tab" class="tab-content">
-    <section id="game-history-section">
-      <div id="pagination-top" class="pagination"></div>
-      <div id="game-history"></div>
-      <div id="pagination-bottom" class="pagination"></div>
-    </section>
-    </div>
-
-    <hr>
-    <a href="/index.html">< back home</a>
-  </main>
-
-  <script>
-    // ============================================================================
-    // SUPABASE CONFIGURATION
-    // ============================================================================
-    const SUPABASE_URL = 'https://jrxghkdtnpohqrmcfswg.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_-6BSbFrCttifJ3ZB64omug_unMpVSo-';
-    const { createClient } = supabase;
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-    
-    // ============================================================================
-    // CONSTANTS
-    // ============================================================================
-    const PLAYERS_PER_TEAM = 2;
-    const MIN_SCORE = 0;
-    const MAX_SCORE = 10;
-    const DEFAULT_SCORE = 0;
-    const GAMES_PER_PAGE = 10;
-    
-    const DOM_IDS = {
-      PLAYER_POOL: 'player-pool',
-      ADD_PLAYER_FORM: 'add-player-form',
-      PLAYER_NAME_INPUT: 'new-player-name',
-      TEAM1_PLAYERS: 'team1-players',
-      TEAM2_PLAYERS: 'team2-players',
-      TEAM1_SCORE: 'team1-score',
-      TEAM2_SCORE: 'team2-score',
-      GAME_HISTORY: 'game-history',
-      PAGINATION_TOP: 'pagination-top',
-      PAGINATION_BOTTOM: 'pagination-bottom',
-      TEAM_STATS: 'team-stats',
-      PLAYER_STATS: 'player-stats',
-      LOG_GAME_TAB: 'log-game-tab',
-      HISTORY_TAB: 'history-tab',
-      LEADERBOARD_TAB: 'leaderboard-tab',
-      GAMES_TAB: 'games-tab'
-    };
-    
-    const CSS_CLASSES = {
-      SELECTED_TEAM1: 'selected-team1',
-      SELECTED_TEAM2: 'selected-team2',
-      DISABLED: 'disabled',
-      HIDDEN: 'hidden',
-      ACTIVE: 'active',
-      PLAYER_BTN: 'player-btn',
-      GAME_ENTRY: 'game-entry'
-    };
-    
-    const MESSAGES = {
-      NO_PLAYERS: 'No players yet. Add some players first!',
-      NO_GAMES: 'No games logged yet.',
-      ENTER_NAME: 'Please enter a player name',
-      PLAYER_EXISTS: 'Player already exists',
-      SELECT_TEAM: (team) => `Please select ${PLAYERS_PER_TEAM} players for Team ${team}`,
-      INVALID_SCORES: `Scores must be between ${MIN_SCORE} and ${MAX_SCORE}`,
-      ZERO_ZERO_SCORE: 'Cannot log a game with 0:0 score. Please enter a valid score.',
-      GAME_LOGGED: 'Game logged successfully!',
-      SELECT_PROMPT: `Select ${PLAYERS_PER_TEAM} players`
-    };
-    
-    const TABS = {
-      LOG_GAME: 'log-game',
-      STATISTICS: 'statistics',
-      LEADERBOARD: 'leaderboard',
-      GAMES: 'games'
-    };
-
-    // ============================================================================
-    // STATE
-    // ============================================================================
-    let players = [];
-    let games = [];
-    let selectedTeam1 = [];
-    let selectedTeam2 = [];
-    let teamSortColumn = 'wins';
-    let teamSortDirection = 'desc';
-    let playerSortColumn = 'wins';
-    let playerSortDirection = 'desc';
-    let currentPage = 1;
-    let currentTab = TABS.LOG_GAME;
-    let realtimeChannel = null;
-
-    // ============================================================================
-    // UTILITY FUNCTIONS
-    // ============================================================================
-    const getElement = (id) => document.getElementById(id);
-    const getAllElements = (selector) => document.querySelectorAll(selector);
-    
-    const isPlayerSelected = (player) => 
-      selectedTeam1.includes(player) || selectedTeam2.includes(player);
-    
-    const isTeamFull = (team) => team.length >= PLAYERS_PER_TEAM;
-    
-    const areTeamsFull = () => 
-      isTeamFull(selectedTeam1) && isTeamFull(selectedTeam2);
-    
-    const formatTeamDisplay = (team) => {
-      if (team.length === 0) {
-        return '<div class="empty-slot">Select 2 players</div>';
+      .realtime-notification.fade-out {
+        animation: fadeOut 0.3s ease-out forwards;
       }
-      
-      return team.map(player => `
+
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+
+        .notification-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.75rem;
+          padding: 1rem;
+          background: #f8f9fa;
+          border-radius: 8px;
+          margin-bottom: 1rem;
+          border: 2px solid #e0e0e0;
+        }
+
+        .notification-toggle.enabled {
+          background: #e8f5e9;
+          border-color: #4caf50;
+        }
+
+        .notification-btn {
+          padding: 0.5rem 1rem;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .notification-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .notification-btn.enable {
+          background: #4caf50;
+          color: white;
+        }
+
+        .notification-btn.enable:hover:not(:disabled) {
+          background: #45a049;
+        }
+
+        .notification-btn.disable {
+          background: #f44336;
+          color: white;
+        }
+
+        .notification-btn.disable:hover:not(:disabled) {
+          background: #da190b;
+        }
+        to {
+          opacity: 0;
+          transform: translateX(400px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Kicker Statistics</h1>
+    </header>
+    <main>
+      <!-- Tab Navigation -->
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('log-game')">
+          Log Game
+        </button>
+        <button class="tab" onclick="switchTab('statistics')">
+          Statistics
+        </button>
+        <button class="tab" onclick="switchTab('leaderboard')">
+          Leaderboard
+        </button>
+        <button class="tab" onclick="switchTab('games')">History</button>
+      </div>
+
+      <!-- Log Game Tab -->
+      <div id="log-game-tab" class="tab-content active">
+        <section id="log-game-section">
+          <div class="team-selection team1">
+            <h3>
+              Team Black<span
+                class="team-color-indicator black"
+                title="Black"
+              ></span>
+            </h3>
+            <div class="selected-players" id="team1-players">
+              <div class="empty-slot">Select 2 players</div>
+            </div>
+          </div>
+
+          <div class="team-selection team2">
+            <h3>
+              Team White<span
+                class="team-color-indicator white"
+                title="White"
+              ></span>
+            </h3>
+            <div class="selected-players" id="team2-players">
+              <div class="empty-slot">Select 2 players</div>
+            </div>
+          </div>
+
+          <div class="score-display">
+            <label>Score:</label>
+            <input
+              type="number"
+              id="team1-score"
+              class="score-input"
+              min="0"
+              max="10"
+              value="0"
+              onfocus="if (this.value == '0') this.value = '';"
+              onblur="if (this.value == '') this.value = '0';"
+            />
+            :
+            <input
+              type="number"
+              id="team2-score"
+              class="score-input"
+              min="0"
+              max="10"
+              value="0"
+              onfocus="if (this.value == '0') this.value = '';"
+              onblur="if (this.value == '') this.value = '0';"
+            />
+          </div>
+
+          <button class="btn btn-success" onclick="logGame()">Log Game</button>
+          <button class="btn btn-secondary" onclick="resetSelection()">
+            Reset
+          </button>
+
+          <div class="pool-header">
+            <h3>Player Pool</h3>
+            <span
+              class="plus-icon"
+              onclick="toggleAddPlayer()"
+              title="Add player"
+              >+</span
+            >
+          </div>
+
+          <!-- Add Player Form -->
+          <div id="add-player-form" class="add-player-form hidden">
+            <input type="text" id="new-player-name" placeholder="Player name" />
+            <button class="btn btn-primary" onclick="addPlayer()">
+              Add Player
+            </button>
+          </div>
+
+          <div id="player-pool" class="player-pool"></div>
+        </section>
+      </div>
+
+      <!-- History Tab -->
+      <div id="history-tab" class="tab-content">
+        <section id="statistics-section">
+          <div class="stats-section">
+            <h3>Team Statistics</h3>
+            <div id="team-stats"></div>
+          </div>
+
+          <div class="stats-section">
+            <h3>Player Statistics</h3>
+            <div id="player-stats"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Leaderboard Tab -->
+      <div id="leaderboard-tab" class="tab-content">
+        <section id="leaderboard-section">
+          <div class="leaderboard-grid">
+            <h2 class="section-header">🏆 Team Leaderboards</h2>
+
+            <div class="leaderboard-card">
+              <h3>Best Win Percentage</h3>
+              <div id="top-teams-winpct"></div>
+            </div>
+
+            <div class="leaderboard-card">
+              <h3>Most Wins</h3>
+              <div id="top-teams-wins"></div>
+            </div>
+
+            <div class="leaderboard-card">
+              <h3>Best Form (Hot Streak)</h3>
+              <div id="top-teams-form"></div>
+            </div>
+
+            <h2 class="section-header">💀 Wall of Shame</h2>
+
+            <div class="leaderboard-card centered-card">
+              <div class="notification-toggle" id="notification-toggle">
+                <span id="notification-status"
+                  >🔕 Push notifications disabled</span
+                >
+                <button
+                  class="notification-btn enable"
+                  id="notification-btn"
+                  onclick="togglePushNotifications()"
+                >
+                  Enable Notifications
+                </button>
+              </div>
+              <div id="wall-of-shame"></div>
+            </div>
+
+            <h2 class="section-header">⭐ Player Leaderboards</h2>
+
+            <div class="leaderboard-card">
+              <h3>Best Win Percentage</h3>
+              <div id="top-players-winpct"></div>
+            </div>
+
+            <div class="leaderboard-card">
+              <h3>Most Wins</h3>
+              <div id="top-players-wins"></div>
+            </div>
+
+            <div class="leaderboard-card">
+              <h3>Best Form (Hot Streak)</h3>
+              <div id="top-players-form"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Games Tab -->
+      <div id="games-tab" class="tab-content">
+        <section id="game-history-section">
+          <div id="pagination-top" class="pagination"></div>
+          <div id="game-history"></div>
+          <div id="pagination-bottom" class="pagination"></div>
+        </section>
+      </div>
+
+      <hr />
+      <a href="/index.html">< back home</a>
+    </main>
+
+    <script>
+      // ============================================================================
+      // SUPABASE CONFIGURATION
+      // ============================================================================
+      const SUPABASE_URL = "https://jrxghkdtnpohqrmcfswg.supabase.co";
+      const SUPABASE_KEY = "sb_publishable_-6BSbFrCttifJ3ZB64omug_unMpVSo-";
+      const { createClient } = supabase;
+      const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      // ============================================================================
+      // CONSTANTS
+      // ============================================================================
+      const PLAYERS_PER_TEAM = 2;
+
+      // Push notification state
+      let pushSubscription = null;
+      let notificationPermission = "default";
+      const MIN_SCORE = 0;
+      const MAX_SCORE = 10;
+      const DEFAULT_SCORE = 0;
+      const GAMES_PER_PAGE = 10;
+
+      const DOM_IDS = {
+        PLAYER_POOL: "player-pool",
+        ADD_PLAYER_FORM: "add-player-form",
+        PLAYER_NAME_INPUT: "new-player-name",
+        TEAM1_PLAYERS: "team1-players",
+        TEAM2_PLAYERS: "team2-players",
+        TEAM1_SCORE: "team1-score",
+        TEAM2_SCORE: "team2-score",
+        GAME_HISTORY: "game-history",
+        PAGINATION_TOP: "pagination-top",
+        PAGINATION_BOTTOM: "pagination-bottom",
+        TEAM_STATS: "team-stats",
+        PLAYER_STATS: "player-stats",
+        LOG_GAME_TAB: "log-game-tab",
+        HISTORY_TAB: "history-tab",
+        LEADERBOARD_TAB: "leaderboard-tab",
+        GAMES_TAB: "games-tab",
+      };
+
+      const CSS_CLASSES = {
+        SELECTED_TEAM1: "selected-team1",
+        SELECTED_TEAM2: "selected-team2",
+        DISABLED: "disabled",
+        HIDDEN: "hidden",
+        ACTIVE: "active",
+        PLAYER_BTN: "player-btn",
+        GAME_ENTRY: "game-entry",
+      };
+
+      const MESSAGES = {
+        NO_PLAYERS: "No players yet. Add some players first!",
+        NO_GAMES: "No games logged yet.",
+        ENTER_NAME: "Please enter a player name",
+        PLAYER_EXISTS: "Player already exists",
+        SELECT_TEAM: (team) =>
+          `Please select ${PLAYERS_PER_TEAM} players for Team ${team}`,
+        INVALID_SCORES: `Scores must be between ${MIN_SCORE} and ${MAX_SCORE}`,
+        ZERO_ZERO_SCORE:
+          "Cannot log a game with 0:0 score. Please enter a valid score.",
+        GAME_LOGGED: "Game logged successfully!",
+        SELECT_PROMPT: `Select ${PLAYERS_PER_TEAM} players`,
+      };
+
+      const TABS = {
+        LOG_GAME: "log-game",
+        STATISTICS: "statistics",
+        LEADERBOARD: "leaderboard",
+        GAMES: "games",
+      };
+
+      // ============================================================================
+      // STATE
+      // ============================================================================
+      let players = [];
+      let games = [];
+      let selectedTeam1 = [];
+      let selectedTeam2 = [];
+      let teamSortColumn = "wins";
+      let teamSortDirection = "desc";
+      let playerSortColumn = "wins";
+      let playerSortDirection = "desc";
+      let currentPage = 1;
+      let currentTab = TABS.LOG_GAME;
+      let realtimeChannel = null;
+
+      // ============================================================================
+      // UTILITY FUNCTIONS
+      // ============================================================================
+      const getElement = (id) => document.getElementById(id);
+      const getAllElements = (selector) => document.querySelectorAll(selector);
+
+      const isPlayerSelected = (player) =>
+        selectedTeam1.includes(player) || selectedTeam2.includes(player);
+
+      const isTeamFull = (team) => team.length >= PLAYERS_PER_TEAM;
+
+      const areTeamsFull = () =>
+        isTeamFull(selectedTeam1) && isTeamFull(selectedTeam2);
+
+      const formatTeamDisplay = (team) => {
+        if (team.length === 0) {
+          return '<div class="empty-slot">Select 2 players</div>';
+        }
+
+        return team
+          .map(
+            (player) => `
         <div class="player-card" onclick="togglePlayerSelection('${player}')">
           <div class="player-icon">👤</div>
           <div class="player-name">${player}</div>
         </div>
-      `).join('');
-    };
-    
-    const formatDateTime = (isoDate) => {
-      const date = new Date(isoDate);
-      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-    };
-    
-    const normalizeTeam = (team) => {
-      return [...team].sort().join(' & ');
-    };
-    
-    const calculateWinPercentage = (wins, total) => {
-      if (total === 0) return 0;
-      return ((wins / total) * 100).toFixed(1);
-    };
-    
-    const getFavoriteOpponent = (opponents) => {
-      if (!opponents || Object.keys(opponents).length === 0) return '-';
-      
-      let maxWins = 0;
-      let favorite = '-';
-      
-      Object.entries(opponents).forEach(([opponent, stats]) => {
-        if (stats.wins > maxWins) {
-          maxWins = stats.wins;
-          favorite = `${opponent} (${stats.wins}W)`;
-        }
-      });
-      
-      return maxWins > 0 ? favorite : '-';
-    };
-    
-    const getLeastFavoriteOpponent = (opponents) => {
-      if (!opponents || Object.keys(opponents).length === 0) return '-';
-      
-      let maxLosses = 0;
-      let leastFavorite = '-';
-      
-      Object.entries(opponents).forEach(([opponent, stats]) => {
-        if (stats.losses > maxLosses) {
-          maxLosses = stats.losses;
-          leastFavorite = `${opponent} (${stats.losses}L)`;
-        }
-      });
-      
-      return maxLosses > 0 ? leastFavorite : '-';
-    };
-    
-    const getBestPartner = (partners) => {
-      if (!partners || Object.keys(partners).length === 0) return '-';
-      
-      let maxWins = 0;
-      let bestPartner = '-';
-      
-      Object.entries(partners).forEach(([partner, stats]) => {
-        if (stats.wins > maxWins) {
-          maxWins = stats.wins;
-          bestPartner = `${partner} (${stats.wins}W)`;
-        }
-      });
-      
-      return maxWins > 0 ? bestPartner : '-';
-    };
-    
-    const getFormDisplay = (form) => {
-      if (!form || form.length === 0) return '-';
-      
-      // Get last 5 games (form is in reverse chronological order)
-      const lastFive = form.slice(0, 5);
-      
-      return lastFive.map(result => {
-        if (result === 'W') {
-          return '<span class="form-indicator form-win">+</span>';
-        } else {
-          return '<span class="form-indicator form-loss">-</span>';
-        }
-      }).reverse().join('');
-    };
+      `,
+          )
+          .join("");
+      };
 
-    // ============================================================================
-    // DATA PERSISTENCE
-    // ============================================================================
-    const loadData = async () => {
-      try {
-        // Load players from Supabase
-        const { data: playersData, error: playersError } = await supabaseClient
-          .from('players')
-          .select('name')
-          .order('created_at', { ascending: true });
-        
-        if (playersError) throw playersError;
-        
-        if (playersData) {
-          players = playersData.map(p => p.name);
+      const formatDateTime = (isoDate) => {
+        const date = new Date(isoDate);
+        return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+      };
+
+      const normalizeTeam = (team) => {
+        return [...team].sort().join(" & ");
+      };
+
+      const calculateWinPercentage = (wins, total) => {
+        if (total === 0) return 0;
+        return ((wins / total) * 100).toFixed(1);
+      };
+
+      const getFavoriteOpponent = (opponents) => {
+        if (!opponents || Object.keys(opponents).length === 0) return "-";
+
+        let maxWins = 0;
+        let favorite = "-";
+
+        Object.entries(opponents).forEach(([opponent, stats]) => {
+          if (stats.wins > maxWins) {
+            maxWins = stats.wins;
+            favorite = `${opponent} (${stats.wins}W)`;
+          }
+        });
+
+        return maxWins > 0 ? favorite : "-";
+      };
+
+      const getLeastFavoriteOpponent = (opponents) => {
+        if (!opponents || Object.keys(opponents).length === 0) return "-";
+
+        let maxLosses = 0;
+        let leastFavorite = "-";
+
+        Object.entries(opponents).forEach(([opponent, stats]) => {
+          if (stats.losses > maxLosses) {
+            maxLosses = stats.losses;
+            leastFavorite = `${opponent} (${stats.losses}L)`;
+          }
+        });
+
+        return maxLosses > 0 ? leastFavorite : "-";
+      };
+
+      const getBestPartner = (partners) => {
+        if (!partners || Object.keys(partners).length === 0) return "-";
+
+        let maxWins = 0;
+        let bestPartner = "-";
+
+        Object.entries(partners).forEach(([partner, stats]) => {
+          if (stats.wins > maxWins) {
+            maxWins = stats.wins;
+            bestPartner = `${partner} (${stats.wins}W)`;
+          }
+        });
+
+        return maxWins > 0 ? bestPartner : "-";
+      };
+
+      const getFormDisplay = (form) => {
+        if (!form || form.length === 0) return "-";
+
+        // Get last 5 games (form is in reverse chronological order)
+        const lastFive = form.slice(0, 5);
+
+        return lastFive
+          .map((result) => {
+            if (result === "W") {
+              return '<span class="form-indicator form-win">+</span>';
+            } else {
+              return '<span class="form-indicator form-loss">-</span>';
+            }
+          })
+          .reverse()
+          .join("");
+      };
+
+      // ============================================================================
+      // DATA PERSISTENCE
+      // ============================================================================
+      const loadData = async () => {
+        try {
+          // Load players from Supabase
+          const { data: playersData, error: playersError } =
+            await supabaseClient
+              .from("players")
+              .select("name")
+              .order("created_at", { ascending: true });
+
+          if (playersError) throw playersError;
+
+          if (playersData) {
+            players = playersData.map((p) => p.name);
+          }
+
+          // Load games from Supabase
+          const { data: gamesData, error: gamesError } = await supabaseClient
+            .from("games")
+            .select("*")
+            .order("date", { ascending: false });
+
+          if (gamesError) throw gamesError;
+
+          if (gamesData) {
+            games = gamesData;
+          }
+        } catch (error) {
+          console.error("Error loading data from Supabase:", error);
+          alert("Failed to load data. Please check your connection.");
         }
-        
-        // Load games from Supabase
-        const { data: gamesData, error: gamesError } = await supabaseClient
-          .from('games')
-          .select('*')
-          .order('date', { ascending: false });
-        
-        if (gamesError) throw gamesError;
-        
-        if (gamesData) {
-          games = gamesData;
+      };
+
+      const savePlayer = async (playerName) => {
+        try {
+          const { error } = await supabaseClient
+            .from("players")
+            .insert([{ name: playerName }]);
+
+          if (error) throw error;
+        } catch (error) {
+          console.error("Error saving player:", error);
+          throw error;
         }
-      } catch (error) {
-        console.error('Error loading data from Supabase:', error);
-        alert('Failed to load data. Please check your connection.');
-      }
-    };
+      };
 
-    const savePlayer = async (playerName) => {
-      try {
-        const { error } = await supabaseClient
-          .from('players')
-          .insert([{ name: playerName }]);
-        
-        if (error) throw error;
-      } catch (error) {
-        console.error('Error saving player:', error);
-        throw error;
-      }
-    };
+      const saveGame = async (game) => {
+        try {
+          const { error } = await supabaseClient.from("games").insert([game]);
 
-    const saveGame = async (game) => {
-      try {
-        const { error } = await supabaseClient
-          .from('games')
-          .insert([game]);
-        
-        if (error) throw error;
-        
-        games.unshift(game);
-      } catch (error) {
-        console.error('Error saving game:', error);
-        throw error;
-      }
-    };
+          if (error) throw error;
 
-    const deleteGameFromDB = async (gameId) => {
-      try {
-        const { error } = await supabaseClient
-          .from('games')
-          .delete()
-          .eq('id', gameId);
-        
-        if (error) throw error;
-      } catch (error) {
-        console.error('Error deleting game:', error);
-        throw error;
-      }
-    };
+          games.unshift(game);
+        } catch (error) {
+          console.error("Error saving game:", error);
+          throw error;
+        }
+      };
 
-    // ============================================================================
-    // PLAYER MANAGEMENT
-    // ============================================================================
-    const toggleAddPlayer = () => {
-      const form = getElement(DOM_IDS.ADD_PLAYER_FORM);
-      form.classList.toggle(CSS_CLASSES.HIDDEN);
-      
-      if (!form.classList.contains(CSS_CLASSES.HIDDEN)) {
-        getElement(DOM_IDS.PLAYER_NAME_INPUT).focus();
-      }
-    };
+      const deleteGameFromDB = async (gameId) => {
+        try {
+          const { error } = await supabaseClient
+            .from("games")
+            .delete()
+            .eq("id", gameId);
 
-    const addPlayer = async () => {
-      const input = getElement(DOM_IDS.PLAYER_NAME_INPUT);
-      const name = input.value.trim();
-      
-      if (!validatePlayerName(name)) return;
-      
-      try {
-        await savePlayer(name);
-        players.push(name);
-        
-        clearPlayerInput(input);
-        hideAddPlayerForm();
+          if (error) throw error;
+        } catch (error) {
+          console.error("Error deleting game:", error);
+          throw error;
+        }
+      };
+
+      // ============================================================================
+      // PLAYER MANAGEMENT
+      // ============================================================================
+      const toggleAddPlayer = () => {
+        const form = getElement(DOM_IDS.ADD_PLAYER_FORM);
+        form.classList.toggle(CSS_CLASSES.HIDDEN);
+
+        if (!form.classList.contains(CSS_CLASSES.HIDDEN)) {
+          getElement(DOM_IDS.PLAYER_NAME_INPUT).focus();
+        }
+      };
+
+      const addPlayer = async () => {
+        const input = getElement(DOM_IDS.PLAYER_NAME_INPUT);
+        const name = input.value.trim();
+
+        if (!validatePlayerName(name)) return;
+
+        try {
+          await savePlayer(name);
+          players.push(name);
+
+          clearPlayerInput(input);
+          hideAddPlayerForm();
+          renderPlayerPool();
+        } catch (error) {
+          alert("Failed to add player. Please try again.");
+        }
+      };
+
+      const validatePlayerName = (name) => {
+        if (name === "") {
+          alert(MESSAGES.ENTER_NAME);
+          return false;
+        }
+
+        if (players.includes(name)) {
+          alert(MESSAGES.PLAYER_EXISTS);
+          return false;
+        }
+
+        return true;
+      };
+
+      const clearPlayerInput = (input) => {
+        input.value = "";
+      };
+
+      const hideAddPlayerForm = () => {
+        getElement(DOM_IDS.ADD_PLAYER_FORM).classList.add(CSS_CLASSES.HIDDEN);
+      };
+
+      // ============================================================================
+      // TEAM SELECTION
+      // ============================================================================
+      const togglePlayerSelection = (player) => {
+        if (removePlayerFromTeam(player, selectedTeam1)) return;
+        if (removePlayerFromTeam(player, selectedTeam2)) return;
+
+        addPlayerToAvailableTeam(player);
+      };
+
+      const removePlayerFromTeam = (player, team) => {
+        const index = team.indexOf(player);
+        if (index === -1) return false;
+
+        team.splice(index, 1);
+        refreshUI();
+        return true;
+      };
+
+      const addPlayerToAvailableTeam = (player) => {
+        if (!isTeamFull(selectedTeam1)) {
+          selectedTeam1.push(player);
+          refreshUI();
+          return;
+        }
+
+        if (!isTeamFull(selectedTeam2)) {
+          selectedTeam2.push(player);
+          refreshUI();
+          return;
+        }
+      };
+
+      const refreshUI = () => {
+        updateTeamDisplay();
         renderPlayerPool();
-      } catch (error) {
-        alert('Failed to add player. Please try again.');
-      }
-    };
-    
-    const validatePlayerName = (name) => {
-      if (name === '') {
-        alert(MESSAGES.ENTER_NAME);
-        return false;
-      }
-      
-      if (players.includes(name)) {
-        alert(MESSAGES.PLAYER_EXISTS);
-        return false;
-      }
-      
-      return true;
-    };
-    
-    const clearPlayerInput = (input) => {
-      input.value = '';
-    };
-    
-    const hideAddPlayerForm = () => {
-      getElement(DOM_IDS.ADD_PLAYER_FORM).classList.add(CSS_CLASSES.HIDDEN);
-    };
+      };
 
-    // ============================================================================
-    // TEAM SELECTION
-    // ============================================================================
-    const togglePlayerSelection = (player) => {
-      if (removePlayerFromTeam(player, selectedTeam1)) return;
-      if (removePlayerFromTeam(player, selectedTeam2)) return;
-      
-      addPlayerToAvailableTeam(player);
-    };
-    
-    const removePlayerFromTeam = (player, team) => {
-      const index = team.indexOf(player);
-      if (index === -1) return false;
-      
-      team.splice(index, 1);
-      refreshUI();
-      return true;
-    };
-    
-    const addPlayerToAvailableTeam = (player) => {
-      if (!isTeamFull(selectedTeam1)) {
-        selectedTeam1.push(player);
+      const updateTeamDisplay = () => {
+        getElement(DOM_IDS.TEAM1_PLAYERS).innerHTML =
+          formatTeamDisplay(selectedTeam1);
+        getElement(DOM_IDS.TEAM2_PLAYERS).innerHTML =
+          formatTeamDisplay(selectedTeam2);
+      };
+
+      const resetSelection = () => {
+        selectedTeam1 = [];
+        selectedTeam2 = [];
+
+        getElement(DOM_IDS.TEAM1_SCORE).value = DEFAULT_SCORE;
+        getElement(DOM_IDS.TEAM2_SCORE).value = DEFAULT_SCORE;
+
         refreshUI();
-        return;
-      }
-      
-      if (!isTeamFull(selectedTeam2)) {
-        selectedTeam2.push(player);
-        refreshUI();
-        return;
-      }
-    };
-    
-    const refreshUI = () => {
-      updateTeamDisplay();
-      renderPlayerPool();
-    };
+      };
 
-    const updateTeamDisplay = () => {
-      getElement(DOM_IDS.TEAM1_PLAYERS).innerHTML = formatTeamDisplay(selectedTeam1);
-      getElement(DOM_IDS.TEAM2_PLAYERS).innerHTML = formatTeamDisplay(selectedTeam2);
-    };
+      // ============================================================================
+      // RENDERING
+      // ============================================================================
+      const renderPlayerPool = () => {
+        const pool = getElement(DOM_IDS.PLAYER_POOL);
+        pool.innerHTML = "";
 
-    const resetSelection = () => {
-      selectedTeam1 = [];
-      selectedTeam2 = [];
-      
-      getElement(DOM_IDS.TEAM1_SCORE).value = DEFAULT_SCORE;
-      getElement(DOM_IDS.TEAM2_SCORE).value = DEFAULT_SCORE;
-      
-      refreshUI();
-    };
+        if (players.length === 0) {
+          pool.innerHTML = `<p>${MESSAGES.NO_PLAYERS}</p>`;
+          return;
+        }
 
-    // ============================================================================
-    // RENDERING
-    // ============================================================================
-    const renderPlayerPool = () => {
-      const pool = getElement(DOM_IDS.PLAYER_POOL);
-      pool.innerHTML = '';
-      
-      if (players.length === 0) {
-        pool.innerHTML = `<p>${MESSAGES.NO_PLAYERS}</p>`;
-        return;
-      }
-      
-      players.forEach(player => {
-        pool.appendChild(createPlayerButton(player));
-      });
-    };
-    
-    const createPlayerButton = (player) => {
-      const btn = document.createElement('button');
-      btn.className = CSS_CLASSES.PLAYER_BTN;
-      btn.textContent = player;
-      btn.onclick = () => togglePlayerSelection(player);
-      
-      applyPlayerButtonState(btn, player);
-      
-      return btn;
-    };
-    
-    const applyPlayerButtonState = (btn, player) => {
-      if (selectedTeam1.includes(player)) {
-        btn.classList.add(CSS_CLASSES.SELECTED_TEAM1);
-      } else if (selectedTeam2.includes(player)) {
-        btn.classList.add(CSS_CLASSES.SELECTED_TEAM2);
-      }
-      
-      if (shouldDisableButton(player)) {
-        btn.classList.add(CSS_CLASSES.DISABLED);
-        btn.disabled = true;
-      }
-    };
-    
-    const shouldDisableButton = (player) => {
-      return areTeamsFull() && !isPlayerSelected(player);
-    };
+        players.forEach((player) => {
+          pool.appendChild(createPlayerButton(player));
+        });
+      };
 
-    const renderGameHistory = () => {
-      const history = getElement(DOM_IDS.GAME_HISTORY);
-      
-      if (games.length === 0) {
-        history.innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
-        getElement(DOM_IDS.PAGINATION_TOP).innerHTML = '';
-        getElement(DOM_IDS.PAGINATION_BOTTOM).innerHTML = '';
-        return;
-      }
-      
-      // Calculate pagination
-      const totalPages = Math.ceil(games.length / GAMES_PER_PAGE);
-      const startIndex = (currentPage - 1) * GAMES_PER_PAGE;
-      const endIndex = startIndex + GAMES_PER_PAGE;
-      const paginatedGames = games.slice(startIndex, endIndex);
-      
-      // Render game history
-      history.innerHTML = '';
-      
-      paginatedGames.forEach(game => {
-        history.appendChild(createGameEntry(game));
-      });
-      
-      // Render pagination controls
-      renderPagination(totalPages);
-    };
-    
-    const renderPagination = (totalPages) => {
-      if (totalPages <= 1) {
-        getElement(DOM_IDS.PAGINATION_TOP).innerHTML = '';
-        getElement(DOM_IDS.PAGINATION_BOTTOM).innerHTML = '';
-        return;
-      }
-      
-      const startGame = (currentPage - 1) * GAMES_PER_PAGE + 1;
-      const endGame = Math.min(currentPage * GAMES_PER_PAGE, games.length);
-      
-      let html = `
-        <button class="pagination-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>
+      const createPlayerButton = (player) => {
+        const btn = document.createElement("button");
+        btn.className = CSS_CLASSES.PLAYER_BTN;
+        btn.textContent = player;
+        btn.onclick = () => togglePlayerSelection(player);
+
+        applyPlayerButtonState(btn, player);
+
+        return btn;
+      };
+
+      const applyPlayerButtonState = (btn, player) => {
+        if (selectedTeam1.includes(player)) {
+          btn.classList.add(CSS_CLASSES.SELECTED_TEAM1);
+        } else if (selectedTeam2.includes(player)) {
+          btn.classList.add(CSS_CLASSES.SELECTED_TEAM2);
+        }
+
+        if (shouldDisableButton(player)) {
+          btn.classList.add(CSS_CLASSES.DISABLED);
+          btn.disabled = true;
+        }
+      };
+
+      const shouldDisableButton = (player) => {
+        return areTeamsFull() && !isPlayerSelected(player);
+      };
+
+      const renderGameHistory = () => {
+        const history = getElement(DOM_IDS.GAME_HISTORY);
+
+        if (games.length === 0) {
+          history.innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
+          getElement(DOM_IDS.PAGINATION_TOP).innerHTML = "";
+          getElement(DOM_IDS.PAGINATION_BOTTOM).innerHTML = "";
+          return;
+        }
+
+        // Calculate pagination
+        const totalPages = Math.ceil(games.length / GAMES_PER_PAGE);
+        const startIndex = (currentPage - 1) * GAMES_PER_PAGE;
+        const endIndex = startIndex + GAMES_PER_PAGE;
+        const paginatedGames = games.slice(startIndex, endIndex);
+
+        // Render game history
+        history.innerHTML = "";
+
+        paginatedGames.forEach((game) => {
+          history.appendChild(createGameEntry(game));
+        });
+
+        // Render pagination controls
+        renderPagination(totalPages);
+      };
+
+      const renderPagination = (totalPages) => {
+        if (totalPages <= 1) {
+          getElement(DOM_IDS.PAGINATION_TOP).innerHTML = "";
+          getElement(DOM_IDS.PAGINATION_BOTTOM).innerHTML = "";
+          return;
+        }
+
+        const startGame = (currentPage - 1) * GAMES_PER_PAGE + 1;
+        const endGame = Math.min(currentPage * GAMES_PER_PAGE, games.length);
+
+        let html = `
+        <button class="pagination-btn" onclick="goToPage(1)" ${currentPage === 1 ? "disabled" : ""}>
           &laquo; First
         </button>
-        <button class="pagination-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+        <button class="pagination-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? "disabled" : ""}>
           &lsaquo; Prev
         </button>
         <span class="pagination-info">
           Page ${currentPage} of ${totalPages} (${startGame}-${endGame} of ${games.length} games)
         </span>
-        <button class="pagination-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+        <button class="pagination-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? "disabled" : ""}>
           Next &rsaquo;
         </button>
-        <button class="pagination-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>
+        <button class="pagination-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? "disabled" : ""}>
           Last &raquo;
         </button>
       `;
-      
-      getElement(DOM_IDS.PAGINATION_TOP).innerHTML = html;
-      getElement(DOM_IDS.PAGINATION_BOTTOM).innerHTML = html;
-    };
-    
-    const goToPage = (page) => {
-      const totalPages = Math.ceil(games.length / GAMES_PER_PAGE);
-      if (page < 1 || page > totalPages) return;
-      
-      currentPage = page;
-      renderGameHistory();
-      
-      // Scroll to top of game history
-      getElement(DOM_IDS.GAME_HISTORY).scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
-    
-    const createGameEntry = (game) => {
-      const entry = document.createElement('div');
-      entry.className = CSS_CLASSES.GAME_ENTRY;
-      entry.innerHTML = buildGameEntryHTML(game);
-      return entry;
-    };
-    
-    const buildGameEntryHTML = (game) => {
-      const dateStr = formatDateTime(game.date);
-      const winner = determineWinner(game);
-      const winnerDisplay = getWinnerDisplay(game, winner);
-      const color1 = game.color1 || 'black';
-      const color2 = game.color2 || 'white';
-      
-      return `
+
+        getElement(DOM_IDS.PAGINATION_TOP).innerHTML = html;
+        getElement(DOM_IDS.PAGINATION_BOTTOM).innerHTML = html;
+      };
+
+      const goToPage = (page) => {
+        const totalPages = Math.ceil(games.length / GAMES_PER_PAGE);
+        if (page < 1 || page > totalPages) return;
+
+        currentPage = page;
+        renderGameHistory();
+
+        // Scroll to top of game history
+        getElement(DOM_IDS.GAME_HISTORY).scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      };
+
+      const createGameEntry = (game) => {
+        const entry = document.createElement("div");
+        entry.className = CSS_CLASSES.GAME_ENTRY;
+        entry.innerHTML = buildGameEntryHTML(game);
+        return entry;
+      };
+
+      const buildGameEntryHTML = (game) => {
+        const dateStr = formatDateTime(game.date);
+        const winner = determineWinner(game);
+        const winnerDisplay = getWinnerDisplay(game, winner);
+        const color1 = game.color1 || "black";
+        const color2 = game.color2 || "white";
+
+        return `
         <div>
           <small>${dateStr}</small>
           <button class="btn btn-danger delete-btn" onclick="deleteGame(${game.id})">Delete</button>
         </div>
         <div style="margin: 0.5rem 0; clear: both;">
           <span class="team-color-indicator ${color1}" title="${color1}"></span>
-          <strong>${game.team1.join(' & ')}</strong>
+          <strong>${game.team1.join(" & ")}</strong>
           <span style="font-size: 1.3rem; margin: 0 1rem;">${game.score1} : ${game.score2}</span>
-          <strong>${game.team2.join(' & ')}</strong>
+          <strong>${game.team2.join(" & ")}</strong>
           <span class="team-color-indicator ${color2}" title="${color2}"></span>
         </div>
         ${winnerDisplay}
       `;
-    };
-    
-    const determineWinner = (game) => {
-      if (game.score1 > game.score2) return 'team1';
-      if (game.score2 > game.score1) return 'team2';
-      return 'draw';
-    };
-    
-    const getWinnerDisplay = (game, winner) => {
-      if (winner === 'draw') {
-        return '<div><em>Draw</em></div>';
-      }
-      
-      const winningTeam = winner === 'team1' ? game.team1 : game.team2;
-      return `<div><em>Winner: ${winningTeam.join(' & ')}</em></div>`;
-    };
-    
-    // ============================================================================
-    // STATISTICS
-    // ============================================================================
-    const calculateTeamStats = () => {
-      const teamStats = {};
-      
-      games.forEach(game => {
-        const team1Name = normalizeTeam(game.team1);
-        const team2Name = normalizeTeam(game.team2);
-        
-        // Initialize team stats if not exists
-        if (!teamStats[team1Name]) {
-          teamStats[team1Name] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0, form: [] };
+      };
+
+      const determineWinner = (game) => {
+        if (game.score1 > game.score2) return "team1";
+        if (game.score2 > game.score1) return "team2";
+        return "draw";
+      };
+
+      const getWinnerDisplay = (game, winner) => {
+        if (winner === "draw") {
+          return "<div><em>Draw</em></div>";
         }
-        if (!teamStats[team2Name]) {
-          teamStats[team2Name] = { wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, games: 0, form: [] };
-        }
-        
-        // Update stats
-        teamStats[team1Name].games++;
-        teamStats[team2Name].games++;
-        teamStats[team1Name].goalsFor += game.score1;
-        teamStats[team1Name].goalsAgainst += game.score2;
-        teamStats[team2Name].goalsFor += game.score2;
-        teamStats[team2Name].goalsAgainst += game.score1;
-        
-        if (game.score1 > game.score2) {
-          teamStats[team1Name].wins++;
-          teamStats[team2Name].losses++;
-          teamStats[team1Name].form.push('W');
-          teamStats[team2Name].form.push('L');
-        } else if (game.score2 > game.score1) {
-          teamStats[team2Name].wins++;
-          teamStats[team1Name].losses++;
-          teamStats[team2Name].form.push('W');
-          teamStats[team1Name].form.push('L');
-        } else {
-          teamStats[team1Name].draws++;
-          teamStats[team2Name].draws++;
-          teamStats[team1Name].form.push('D');
-          teamStats[team2Name].form.push('D');
-        }
-      });
-      
-      return teamStats;
-    };
-    
-    const calculatePlayerStats = () => {
-      const playerStats = {};
-      
-      games.forEach(game => {
-        const color1 = game.color1 || 'black';
-        const color2 = game.color2 || 'white';
-        
-        // Process team 1 players
-        game.team1.forEach(player => {
-          if (!playerStats[player]) {
-            playerStats[player] = { 
-              wins: 0, 
-              losses: 0, 
-              draws: 0, 
-              goalsFor: 0, 
-              goalsAgainst: 0, 
+
+        const winningTeam = winner === "team1" ? game.team1 : game.team2;
+        return `<div><em>Winner: ${winningTeam.join(" & ")}</em></div>`;
+      };
+
+      // ============================================================================
+      // STATISTICS
+      // ============================================================================
+      const calculateTeamStats = () => {
+        const teamStats = {};
+
+        games.forEach((game) => {
+          const team1Name = normalizeTeam(game.team1);
+          const team2Name = normalizeTeam(game.team2);
+
+          // Initialize team stats if not exists
+          if (!teamStats[team1Name]) {
+            teamStats[team1Name] = {
+              wins: 0,
+              losses: 0,
+              draws: 0,
+              goalsFor: 0,
+              goalsAgainst: 0,
               games: 0,
-              opponents: {}, // Track wins/losses against each opponent
-              partners: {}, // Track wins/losses with each partner
-              blackWins: 0,
-              blackLosses: 0,
-              blackDraws: 0,
-              whiteWins: 0,
-              whiteLosses: 0,
-              whiteDraws: 0
+              form: [],
             };
           }
-          
-          playerStats[player].games++;
-          playerStats[player].goalsFor += game.score1;
-          playerStats[player].goalsAgainst += game.score2;
-          
-          // Track opponent records
-          game.team2.forEach(opponent => {
-            if (!playerStats[player].opponents[opponent]) {
-              playerStats[player].opponents[opponent] = { wins: 0, losses: 0, draws: 0 };
-            }
-            
-            if (game.score1 > game.score2) {
-              playerStats[player].opponents[opponent].wins++;
-            } else if (game.score2 > game.score1) {
-              playerStats[player].opponents[opponent].losses++;
-            } else {
-              playerStats[player].opponents[opponent].draws++;
-            }
-          });
-          
-          // Track partner records
-          game.team1.forEach(partner => {
-            if (partner !== player) {
-              if (!playerStats[player].partners[partner]) {
-                playerStats[player].partners[partner] = { wins: 0, losses: 0, draws: 0 };
-              }
-              
-              if (game.score1 > game.score2) {
-                playerStats[player].partners[partner].wins++;
-              } else if (game.score2 > game.score1) {
-                playerStats[player].partners[partner].losses++;
-              } else {
-                playerStats[player].partners[partner].draws++;
-              }
-            }
-          });
-          
+          if (!teamStats[team2Name]) {
+            teamStats[team2Name] = {
+              wins: 0,
+              losses: 0,
+              draws: 0,
+              goalsFor: 0,
+              goalsAgainst: 0,
+              games: 0,
+              form: [],
+            };
+          }
+
+          // Update stats
+          teamStats[team1Name].games++;
+          teamStats[team2Name].games++;
+          teamStats[team1Name].goalsFor += game.score1;
+          teamStats[team1Name].goalsAgainst += game.score2;
+          teamStats[team2Name].goalsFor += game.score2;
+          teamStats[team2Name].goalsAgainst += game.score1;
+
           if (game.score1 > game.score2) {
-            playerStats[player].wins++;
-            if (color1 === 'black') playerStats[player].blackWins++;
-            else playerStats[player].whiteWins++;
+            teamStats[team1Name].wins++;
+            teamStats[team2Name].losses++;
+            teamStats[team1Name].form.push("W");
+            teamStats[team2Name].form.push("L");
           } else if (game.score2 > game.score1) {
-            playerStats[player].losses++;
-            if (color1 === 'black') playerStats[player].blackLosses++;
-            else playerStats[player].whiteLosses++;
+            teamStats[team2Name].wins++;
+            teamStats[team1Name].losses++;
+            teamStats[team2Name].form.push("W");
+            teamStats[team1Name].form.push("L");
           } else {
-            playerStats[player].draws++;
-            if (color1 === 'black') playerStats[player].blackDraws++;
-            else playerStats[player].whiteDraws++;
+            teamStats[team1Name].draws++;
+            teamStats[team2Name].draws++;
+            teamStats[team1Name].form.push("D");
+            teamStats[team2Name].form.push("D");
           }
         });
-        
-        // Process team 2 players
-        game.team2.forEach(player => {
-          if (!playerStats[player]) {
-            playerStats[player] = { 
-              wins: 0, 
-              losses: 0, 
-              draws: 0, 
-              goalsFor: 0, 
-              goalsAgainst: 0, 
-              games: 0,
-              opponents: {},
-              partners: {},
-              blackWins: 0,
-              blackLosses: 0,
-              blackDraws: 0,
-              whiteWins: 0,
-              whiteLosses: 0,
-              whiteDraws: 0
-            };
-          }
-          
-          playerStats[player].games++;
-          playerStats[player].goalsFor += game.score2;
-          playerStats[player].goalsAgainst += game.score1;
-          
-          // Track opponent records
-          game.team1.forEach(opponent => {
-            if (!playerStats[player].opponents[opponent]) {
-              playerStats[player].opponents[opponent] = { wins: 0, losses: 0, draws: 0 };
+
+        return teamStats;
+      };
+
+      const calculatePlayerStats = () => {
+        const playerStats = {};
+
+        games.forEach((game) => {
+          const color1 = game.color1 || "black";
+          const color2 = game.color2 || "white";
+
+          // Process team 1 players
+          game.team1.forEach((player) => {
+            if (!playerStats[player]) {
+              playerStats[player] = {
+                wins: 0,
+                losses: 0,
+                draws: 0,
+                goalsFor: 0,
+                goalsAgainst: 0,
+                games: 0,
+                opponents: {}, // Track wins/losses against each opponent
+                partners: {}, // Track wins/losses with each partner
+                blackWins: 0,
+                blackLosses: 0,
+                blackDraws: 0,
+                whiteWins: 0,
+                whiteLosses: 0,
+                whiteDraws: 0,
+              };
             }
-            
-            if (game.score2 > game.score1) {
-              playerStats[player].opponents[opponent].wins++;
-            } else if (game.score1 > game.score2) {
-              playerStats[player].opponents[opponent].losses++;
-            } else {
-              playerStats[player].opponents[opponent].draws++;
-            }
-          });
-          
-          // Track partner records
-          game.team2.forEach(partner => {
-            if (partner !== player) {
-              if (!playerStats[player].partners[partner]) {
-                playerStats[player].partners[partner] = { wins: 0, losses: 0, draws: 0 };
+
+            playerStats[player].games++;
+            playerStats[player].goalsFor += game.score1;
+            playerStats[player].goalsAgainst += game.score2;
+
+            // Track opponent records
+            game.team2.forEach((opponent) => {
+              if (!playerStats[player].opponents[opponent]) {
+                playerStats[player].opponents[opponent] = {
+                  wins: 0,
+                  losses: 0,
+                  draws: 0,
+                };
               }
-              
-              if (game.score2 > game.score1) {
-                playerStats[player].partners[partner].wins++;
-              } else if (game.score1 > game.score2) {
-                playerStats[player].partners[partner].losses++;
+
+              if (game.score1 > game.score2) {
+                playerStats[player].opponents[opponent].wins++;
+              } else if (game.score2 > game.score1) {
+                playerStats[player].opponents[opponent].losses++;
               } else {
-                playerStats[player].partners[partner].draws++;
+                playerStats[player].opponents[opponent].draws++;
               }
+            });
+
+            // Track partner records
+            game.team1.forEach((partner) => {
+              if (partner !== player) {
+                if (!playerStats[player].partners[partner]) {
+                  playerStats[player].partners[partner] = {
+                    wins: 0,
+                    losses: 0,
+                    draws: 0,
+                  };
+                }
+
+                if (game.score1 > game.score2) {
+                  playerStats[player].partners[partner].wins++;
+                } else if (game.score2 > game.score1) {
+                  playerStats[player].partners[partner].losses++;
+                } else {
+                  playerStats[player].partners[partner].draws++;
+                }
+              }
+            });
+
+            if (game.score1 > game.score2) {
+              playerStats[player].wins++;
+              if (color1 === "black") playerStats[player].blackWins++;
+              else playerStats[player].whiteWins++;
+            } else if (game.score2 > game.score1) {
+              playerStats[player].losses++;
+              if (color1 === "black") playerStats[player].blackLosses++;
+              else playerStats[player].whiteLosses++;
+            } else {
+              playerStats[player].draws++;
+              if (color1 === "black") playerStats[player].blackDraws++;
+              else playerStats[player].whiteDraws++;
             }
           });
-          
-          if (game.score2 > game.score1) {
-            playerStats[player].wins++;
-            if (color2 === 'black') playerStats[player].blackWins++;
-            else playerStats[player].whiteWins++;
-          } else if (game.score1 > game.score2) {
-            playerStats[player].losses++;
-            if (color2 === 'black') playerStats[player].blackLosses++;
-            else playerStats[player].whiteLosses++;
-          } else {
-            playerStats[player].draws++;
-            if (color2 === 'black') playerStats[player].blackDraws++;
-            else playerStats[player].whiteDraws++;
-          }
+
+          // Process team 2 players
+          game.team2.forEach((player) => {
+            if (!playerStats[player]) {
+              playerStats[player] = {
+                wins: 0,
+                losses: 0,
+                draws: 0,
+                goalsFor: 0,
+                goalsAgainst: 0,
+                games: 0,
+                opponents: {},
+                partners: {},
+                blackWins: 0,
+                blackLosses: 0,
+                blackDraws: 0,
+                whiteWins: 0,
+                whiteLosses: 0,
+                whiteDraws: 0,
+              };
+            }
+
+            playerStats[player].games++;
+            playerStats[player].goalsFor += game.score2;
+            playerStats[player].goalsAgainst += game.score1;
+
+            // Track opponent records
+            game.team1.forEach((opponent) => {
+              if (!playerStats[player].opponents[opponent]) {
+                playerStats[player].opponents[opponent] = {
+                  wins: 0,
+                  losses: 0,
+                  draws: 0,
+                };
+              }
+
+              if (game.score2 > game.score1) {
+                playerStats[player].opponents[opponent].wins++;
+              } else if (game.score1 > game.score2) {
+                playerStats[player].opponents[opponent].losses++;
+              } else {
+                playerStats[player].opponents[opponent].draws++;
+              }
+            });
+
+            // Track partner records
+            game.team2.forEach((partner) => {
+              if (partner !== player) {
+                if (!playerStats[player].partners[partner]) {
+                  playerStats[player].partners[partner] = {
+                    wins: 0,
+                    losses: 0,
+                    draws: 0,
+                  };
+                }
+
+                if (game.score2 > game.score1) {
+                  playerStats[player].partners[partner].wins++;
+                } else if (game.score1 > game.score2) {
+                  playerStats[player].partners[partner].losses++;
+                } else {
+                  playerStats[player].partners[partner].draws++;
+                }
+              }
+            });
+
+            if (game.score2 > game.score1) {
+              playerStats[player].wins++;
+              if (color2 === "black") playerStats[player].blackWins++;
+              else playerStats[player].whiteWins++;
+            } else if (game.score1 > game.score2) {
+              playerStats[player].losses++;
+              if (color2 === "black") playerStats[player].blackLosses++;
+              else playerStats[player].whiteLosses++;
+            } else {
+              playerStats[player].draws++;
+              if (color2 === "black") playerStats[player].blackDraws++;
+              else playerStats[player].whiteDraws++;
+            }
+          });
         });
-      });
-      
-      return playerStats;
-    };
-    
-    const renderTeamStats = () => {
-      const teamStats = calculateTeamStats();
-      const container = getElement(DOM_IDS.TEAM_STATS);
-      
-      if (Object.keys(teamStats).length === 0) {
-        container.innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
-        return;
-      }
-      
-      // Sort teams based on current sort column and direction
-      const sortedTeams = sortTeamStats(Object.entries(teamStats), teamSortColumn, teamSortDirection);
-      
-      let html = `
+
+        return playerStats;
+      };
+
+      const renderTeamStats = () => {
+        const teamStats = calculateTeamStats();
+        const container = getElement(DOM_IDS.TEAM_STATS);
+
+        if (Object.keys(teamStats).length === 0) {
+          container.innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
+          return;
+        }
+
+        // Sort teams based on current sort column and direction
+        const sortedTeams = sortTeamStats(
+          Object.entries(teamStats),
+          teamSortColumn,
+          teamSortDirection,
+        );
+
+        let html = `
         <table class="stats-table">
           <thead>
             <tr>
               <th>Team</th>
-              <th class="sortable ${teamSortColumn === 'games' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('games')">Games</th>
-              <th class="sortable ${teamSortColumn === 'wins' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('wins')">W</th>
-              <th class="sortable ${teamSortColumn === 'losses' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('losses')">L</th>
-              <th class="sortable ${teamSortColumn === 'winPct' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('winPct')">Win%</th>
-              <th class="sortable ${teamSortColumn === 'goalsFor' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('goalsFor')">GS</th>
-              <th class="sortable ${teamSortColumn === 'goalsAgainst' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('goalsAgainst')">GA</th>
-              <th class="sortable ${teamSortColumn === 'goalDiff' ? 'sorted-' + teamSortDirection : ''}" onclick="sortTeamBy('goalDiff')">GD</th>
+              <th class="sortable ${teamSortColumn === "games" ? "sorted-" + teamSortDirection : ""}" onclick="sortTeamBy('games')">Games</th>
+              <th class="sortable ${teamSortColumn === "wins" ? "sorted-" + teamSortDirection : ""}" onclick="sortTeamBy('wins')">W</th>
+              <th class="sortable ${teamSortColumn === "losses" ? "sorted-" + teamSortDirection : ""}" onclick="sortTeamBy('losses')">L</th>
+              <th class="sortable ${teamSortColumn === "winPct" ? "sorted-" + teamSortDirection : ""}" onclick="sortTeamBy('winPct')">Win%</th>
+              <th class="sortable ${teamSortColumn === "goalsFor" ? "sorted-" + teamSortDirection : ""}" onclick="sortTeamBy('goalsFor')">GS</th>
+              <th class="sortable ${teamSortColumn === "goalsAgainst" ? "sorted-" + teamSortDirection : ""}" onclick="sortTeamBy('goalsAgainst')">GA</th>
+              <th class="sortable ${teamSortColumn === "goalDiff" ? "sorted-" + teamSortDirection : ""}" onclick="sortTeamBy('goalDiff')">GD</th>
               <th>Form (Last 5)</th>
             </tr>
           </thead>
           <tbody>
       `;
-      
-      sortedTeams.forEach(([team, stats]) => {
-        const goalDiff = stats.goalsFor - stats.goalsAgainst;
-        const gdDisplay = goalDiff > 0 ? `+${goalDiff}` : goalDiff;
-        const winPct = calculateWinPercentage(stats.wins, stats.games);
-        const formDisplay = getFormDisplay(stats.form);
-        
-        html += `
+
+        sortedTeams.forEach(([team, stats]) => {
+          const goalDiff = stats.goalsFor - stats.goalsAgainst;
+          const gdDisplay = goalDiff > 0 ? `+${goalDiff}` : goalDiff;
+          const winPct = calculateWinPercentage(stats.wins, stats.games);
+          const formDisplay = getFormDisplay(stats.form);
+
+          html += `
           <tr>
             <td><strong>${team}</strong></td>
             <td>${stats.games}</td>
@@ -1462,75 +1624,79 @@
             <td>${formDisplay}</td>
           </tr>
         `;
-      });
-      
-      html += `
+        });
+
+        html += `
           </tbody>
         </table>
       `;
-      
-      container.innerHTML = html;
-    };
-    
-    const sortTeamBy = (column) => {
-      if (teamSortColumn === column) {
-        teamSortDirection = teamSortDirection === 'asc' ? 'desc' : 'asc';
-      } else {
-        teamSortColumn = column;
-        teamSortDirection = 'desc';
-      }
-      renderTeamStats();
-    };
-    
-    const sortTeamStats = (teams, column, direction) => {
-      return teams.sort((a, b) => {
-        let valueA, valueB;
-        
-        if (column === 'goalDiff') {
-          valueA = a[1].goalsFor - a[1].goalsAgainst;
-          valueB = b[1].goalsFor - b[1].goalsAgainst;
-        } else if (column === 'winPct') {
-          valueA = a[1].wins / a[1].games;
-          valueB = b[1].wins / b[1].games;
+
+        container.innerHTML = html;
+      };
+
+      const sortTeamBy = (column) => {
+        if (teamSortColumn === column) {
+          teamSortDirection = teamSortDirection === "asc" ? "desc" : "asc";
         } else {
-          valueA = a[1][column];
-          valueB = b[1][column];
+          teamSortColumn = column;
+          teamSortDirection = "desc";
         }
-        
-        if (direction === 'asc') {
-          return valueA - valueB;
-        } else {
-          return valueB - valueA;
+        renderTeamStats();
+      };
+
+      const sortTeamStats = (teams, column, direction) => {
+        return teams.sort((a, b) => {
+          let valueA, valueB;
+
+          if (column === "goalDiff") {
+            valueA = a[1].goalsFor - a[1].goalsAgainst;
+            valueB = b[1].goalsFor - b[1].goalsAgainst;
+          } else if (column === "winPct") {
+            valueA = a[1].wins / a[1].games;
+            valueB = b[1].wins / b[1].games;
+          } else {
+            valueA = a[1][column];
+            valueB = b[1][column];
+          }
+
+          if (direction === "asc") {
+            return valueA - valueB;
+          } else {
+            return valueB - valueA;
+          }
+        });
+      };
+
+      const renderPlayerStats = () => {
+        const playerStats = calculatePlayerStats();
+        const container = getElement(DOM_IDS.PLAYER_STATS);
+
+        if (Object.keys(playerStats).length === 0) {
+          container.innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
+          return;
         }
-      });
-    };
-    
-    const renderPlayerStats = () => {
-      const playerStats = calculatePlayerStats();
-      const container = getElement(DOM_IDS.PLAYER_STATS);
-      
-      if (Object.keys(playerStats).length === 0) {
-        container.innerHTML = `<p>${MESSAGES.NO_GAMES}</p>`;
-        return;
-      }
-      
-      // Sort players based on current sort column and direction
-      const sortedPlayers = sortPlayerStats(Object.entries(playerStats), playerSortColumn, playerSortDirection);
-      
-      let html = `
+
+        // Sort players based on current sort column and direction
+        const sortedPlayers = sortPlayerStats(
+          Object.entries(playerStats),
+          playerSortColumn,
+          playerSortDirection,
+        );
+
+        let html = `
         <table class="stats-table">
           <thead>
             <tr>
               <th>Player</th>
-              <th class="sortable ${playerSortColumn === 'games' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('games')">Games</th>
-              <th class="sortable ${playerSortColumn === 'wins' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('wins')">W</th>
-              <th class="sortable ${playerSortColumn === 'losses' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('losses')">L</th>
-              <th class="sortable ${playerSortColumn === 'winPct' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('winPct')">Win%</th>
-              <th class="sortable ${playerSortColumn === 'goalsFor' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('goalsFor')">GS</th>
-              <th class="sortable ${playerSortColumn === 'goalsAgainst' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('goalsAgainst')">GA</th>
-              <th class="sortable ${playerSortColumn === 'goalDiff' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('goalDiff')">GD</th>
-              <th class="sortable ${playerSortColumn === 'blackWins' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('blackWins')" title="Black W-L">⚫ W-L</th>
-              <th class="sortable ${playerSortColumn === 'whiteWins' ? 'sorted-' + playerSortDirection : ''}" onclick="sortPlayerBy('whiteWins')" title="White W-L">⚪ W-L</th>
+              <th class="sortable ${playerSortColumn === "games" ? "sorted-" + playerSortDirection : ""}" onclick="sortPlayerBy('games')">Games</th>
+              <th class="sortable ${playerSortColumn === "wins" ? "sorted-" + playerSortDirection : ""}" onclick="sortPlayerBy('wins')">W</th>
+              <th class="sortable ${playerSortColumn === "losses" ? "sorted-" + playerSortDirection : ""}" onclick="sortPlayerBy('losses')">L</th>
+              <th class="sortable ${playerSortColumn === "winPct" ? "sorted-" + playerSortDirection : ""}" onclick="sortPlayerBy('winPct')">Win%</th>
+              <th class="sortable ${playerSortColumn === "goalsFor" ? "sorted-" + playerSortDirection : ""}" onclick="sortPlayerBy('goalsFor')">GS</th>
+              <th class="sortable ${playerSortColumn === "goalsAgainst" ? "sorted-" + playerSortDirection : ""}" onclick="sortPlayerBy('goalsAgainst')">GA</th>
+              <th class="sortable ${playerSortColumn === "goalDiff" ? "sorted-" + playerSortDirection : ""}" onclick="sortPlayerBy('goalDiff')">GD</th>
+              <th class="sortable ${playerSortColumn === "blackWins" ? "sorted-" + playerSortDirection : ""}" onclick="sortPlayerBy('blackWins')" title="Black W-L">⚫ W-L</th>
+              <th class="sortable ${playerSortColumn === "whiteWins" ? "sorted-" + playerSortDirection : ""}" onclick="sortPlayerBy('whiteWins')" title="White W-L">⚪ W-L</th>
               <th>Best Partner</th>
               <th>Fav. Opp</th>
               <th>Least Fav. Opp</th>
@@ -1538,19 +1704,19 @@
           </thead>
           <tbody>
       `;
-      
-      sortedPlayers.forEach(([player, stats]) => {
-        const goalDiff = stats.goalsFor - stats.goalsAgainst;
-        const gdDisplay = goalDiff > 0 ? `+${goalDiff}` : goalDiff;
-        const winPct = calculateWinPercentage(stats.wins, stats.games);
-        const bestPartner = getBestPartner(stats.partners);
-        const favOpponent = getFavoriteOpponent(stats.opponents);
-        const leastFavOpponent = getLeastFavoriteOpponent(stats.opponents);
-        
-        const blackRecord = `${stats.blackWins || 0}-${stats.blackLosses || 0}`;
-        const whiteRecord = `${stats.whiteWins || 0}-${stats.whiteLosses || 0}`;
-        
-        html += `
+
+        sortedPlayers.forEach(([player, stats]) => {
+          const goalDiff = stats.goalsFor - stats.goalsAgainst;
+          const gdDisplay = goalDiff > 0 ? `+${goalDiff}` : goalDiff;
+          const winPct = calculateWinPercentage(stats.wins, stats.games);
+          const bestPartner = getBestPartner(stats.partners);
+          const favOpponent = getFavoriteOpponent(stats.opponents);
+          const leastFavOpponent = getLeastFavoriteOpponent(stats.opponents);
+
+          const blackRecord = `${stats.blackWins || 0}-${stats.blackLosses || 0}`;
+          const whiteRecord = `${stats.whiteWins || 0}-${stats.whiteLosses || 0}`;
+
+          html += `
           <tr>
             <td><strong>${player}</strong></td>
             <td>${stats.games}</td>
@@ -1567,179 +1733,191 @@
             <td>${leastFavOpponent}</td>
           </tr>
         `;
-      });
-      
-      html += `
+        });
+
+        html += `
           </tbody>
         </table>
       `;
-      
-      container.innerHTML = html;
-    };
-    
-    const sortPlayerBy = (column) => {
-      if (playerSortColumn === column) {
-        playerSortDirection = playerSortDirection === 'asc' ? 'desc' : 'asc';
-      } else {
-        playerSortColumn = column;
-        playerSortDirection = 'desc';
-      }
-      renderPlayerStats();
-    };
-    
-    const sortPlayerStats = (players, column, direction) => {
-      return players.sort((a, b) => {
-        let valueA, valueB;
-        
-        if (column === 'goalDiff') {
-          valueA = a[1].goalsFor - a[1].goalsAgainst;
-          valueB = b[1].goalsFor - b[1].goalsAgainst;
-        } else if (column === 'winPct') {
-          valueA = a[1].wins / a[1].games;
-          valueB = b[1].wins / b[1].games;
-        } else {
-          valueA = a[1][column];
-          valueB = b[1][column];
-        }
-        
-        if (direction === 'asc') {
-          return valueA - valueB;
-        } else {
-          return valueB - valueA;
-        }
-      });
-    };
 
-    // ============================================================================
-    // LEADERBOARD
-    // ============================================================================
-    const calculateFormScore = (form) => {
-      if (!form || form.length === 0) return 0;
-      
-      // Calculate score based on recent form (last 5 games)
-      // More recent games have higher weight: [5, 4, 3, 2, 1]
-      const recentForm = form.slice(0, 5);
-      let score = 0;
-      
-      recentForm.forEach((result, index) => {
-        const weight = 5 - index; // Fixed weights: most recent = 5, oldest = 1
-        if (result === 'W') {
-          score += weight;
+        container.innerHTML = html;
+      };
+
+      const sortPlayerBy = (column) => {
+        if (playerSortColumn === column) {
+          playerSortDirection = playerSortDirection === "asc" ? "desc" : "asc";
+        } else {
+          playerSortColumn = column;
+          playerSortDirection = "desc";
         }
-      });
-      
-      return score;
-    };
-    
-    const renderLeaderboard = () => {
-      const teamStats = calculateTeamStats();
-      const playerStats = calculatePlayerStats();
-      
-      // Teams - Best Win Percentage (minimum 3 games)
-      const topTeamsWinPct = Object.entries(teamStats)
-        .filter(([_, stats]) => stats.games >= 3)
-        .sort((a, b) => (b[1].wins / b[1].games) - (a[1].wins / a[1].games))
-        .slice(0, 3);
-      renderTopTeamsWinPct(topTeamsWinPct);
-      
-      // Teams - Most Wins
-      const topTeamsWins = Object.entries(teamStats)
-        .sort((a, b) => b[1].wins - a[1].wins)
-        .slice(0, 3);
-      renderTopTeamsWins(topTeamsWins);
-      
-      // Teams - Best Form
-      const topTeamsForm = Object.entries(teamStats)
-        .filter(([_, stats]) => stats.form && stats.form.length >= 3)
-        .sort((a, b) => calculateFormScore(b[1].form) - calculateFormScore(a[1].form))
-        .slice(0, 3);
-      renderTopTeamsForm(topTeamsForm);
-      
-      // Teams - Wall of Shame (lost with 0 goals)
-      const wallOfShame = [];
-      games.forEach(game => {
-        const team1Name = normalizeTeam(game.team1);
-        const team2Name = normalizeTeam(game.team2);
-        
-        // Check if team1 lost with 0 goals
-        if (game.score1 === 0 && game.score2 > game.score1) {
-          wallOfShame.push({
-            team: team1Name,
-            opponent: team2Name,
-            score: `${game.score1}:${game.score2}`,
-            date: game.created_at
-          });
+        renderPlayerStats();
+      };
+
+      const sortPlayerStats = (players, column, direction) => {
+        return players.sort((a, b) => {
+          let valueA, valueB;
+
+          if (column === "goalDiff") {
+            valueA = a[1].goalsFor - a[1].goalsAgainst;
+            valueB = b[1].goalsFor - b[1].goalsAgainst;
+          } else if (column === "winPct") {
+            valueA = a[1].wins / a[1].games;
+            valueB = b[1].wins / b[1].games;
+          } else {
+            valueA = a[1][column];
+            valueB = b[1][column];
+          }
+
+          if (direction === "asc") {
+            return valueA - valueB;
+          } else {
+            return valueB - valueA;
+          }
+        });
+      };
+
+      // ============================================================================
+      // LEADERBOARD
+      // ============================================================================
+      const calculateFormScore = (form) => {
+        if (!form || form.length === 0) return 0;
+
+        // Calculate score based on recent form (last 5 games)
+        // More recent games have higher weight: [5, 4, 3, 2, 1]
+        const recentForm = form.slice(0, 5);
+        let score = 0;
+
+        recentForm.forEach((result, index) => {
+          const weight = 5 - index; // Fixed weights: most recent = 5, oldest = 1
+          if (result === "W") {
+            score += weight;
+          }
+        });
+
+        return score;
+      };
+
+      const renderLeaderboard = () => {
+        const teamStats = calculateTeamStats();
+        const playerStats = calculatePlayerStats();
+
+        // Teams - Best Win Percentage (minimum 3 games)
+        const topTeamsWinPct = Object.entries(teamStats)
+          .filter(([_, stats]) => stats.games >= 3)
+          .sort((a, b) => b[1].wins / b[1].games - a[1].wins / a[1].games)
+          .slice(0, 3);
+        renderTopTeamsWinPct(topTeamsWinPct);
+
+        // Teams - Most Wins
+        const topTeamsWins = Object.entries(teamStats)
+          .sort((a, b) => b[1].wins - a[1].wins)
+          .slice(0, 3);
+        renderTopTeamsWins(topTeamsWins);
+
+        // Teams - Best Form
+        const topTeamsForm = Object.entries(teamStats)
+          .filter(([_, stats]) => stats.form && stats.form.length >= 3)
+          .sort(
+            (a, b) =>
+              calculateFormScore(b[1].form) - calculateFormScore(a[1].form),
+          )
+          .slice(0, 3);
+        renderTopTeamsForm(topTeamsForm);
+
+        // Teams - Wall of Shame (lost with 0 goals)
+        const wallOfShame = [];
+        games.forEach((game) => {
+          const team1Name = normalizeTeam(game.team1);
+          const team2Name = normalizeTeam(game.team2);
+
+          // Check if team1 lost with 0 goals
+          if (game.score1 === 0 && game.score2 > game.score1) {
+            wallOfShame.push({
+              team: team1Name,
+              opponent: team2Name,
+              score: `${game.score1}:${game.score2}`,
+              date: game.created_at,
+            });
+          }
+
+          // Check if team2 lost with 0 goals
+          if (game.score2 === 0 && game.score1 > game.score2) {
+            wallOfShame.push({
+              team: team2Name,
+              opponent: team1Name,
+              score: `${game.score2}:${game.score1}`,
+              date: game.created_at,
+            });
+          }
+        });
+
+        // Sort by most recent first
+        wallOfShame.sort((a, b) => new Date(b.date) - new Date(a.date));
+        renderWallOfShame(wallOfShame);
+
+        // Players - Best Win Percentage (minimum 5 games)
+        const topPlayersWinPct = Object.entries(playerStats)
+          .filter(([_, stats]) => stats.games >= 5)
+          .sort((a, b) => b[1].wins / b[1].games - a[1].wins / a[1].games)
+          .slice(0, 3);
+        renderTopPlayersWinPct(topPlayersWinPct);
+
+        // Players - Most Wins
+        const topPlayersWins = Object.entries(playerStats)
+          .sort((a, b) => b[1].wins - a[1].wins)
+          .slice(0, 3);
+        renderTopPlayersWins(topPlayersWins);
+
+        // Players - Best Form (based on last 5 games)
+        const topPlayersForm = Object.entries(playerStats)
+          .filter(([_, stats]) => stats.games >= 5)
+          .map(([player, stats]) => {
+            // Calculate form from recent games
+            const recentGames = games
+              .slice(0, 5)
+              .filter(
+                (game) =>
+                  game.team1.includes(player) || game.team2.includes(player),
+              );
+
+            // Build form array (W/L)
+            const form = [];
+            let formScore = 0;
+            recentGames.forEach((game, index) => {
+              const weight = recentGames.length - index;
+              const playerWon =
+                (game.team1.includes(player) && game.score1 > game.score2) ||
+                (game.team2.includes(player) && game.score2 > game.score1);
+              form.push(playerWon ? "W" : "L");
+              if (playerWon) formScore += weight;
+            });
+
+            return [
+              player,
+              { ...stats, formScore, form, recentGames: recentGames.length },
+            ];
+          })
+          .filter(([_, stats]) => stats.recentGames >= 3)
+          .sort((a, b) => b[1].formScore - a[1].formScore)
+          .slice(0, 3);
+        renderTopPlayersForm(topPlayersForm);
+      };
+
+      const renderTopTeamsWinPct = (topTeams) => {
+        const container = document.getElementById("top-teams-winpct");
+        if (topTeams.length === 0) {
+          container.innerHTML =
+            '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 3 games)</p>';
+          return;
         }
-        
-        // Check if team2 lost with 0 goals
-        if (game.score2 === 0 && game.score1 > game.score2) {
-          wallOfShame.push({
-            team: team2Name,
-            opponent: team1Name,
-            score: `${game.score2}:${game.score1}`,
-            date: game.created_at
-          });
-        }
-      });
-      
-      // Sort by most recent first
-      wallOfShame.sort((a, b) => new Date(b.date) - new Date(a.date));
-      renderWallOfShame(wallOfShame);
-      
-      // Players - Best Win Percentage (minimum 5 games)
-      const topPlayersWinPct = Object.entries(playerStats)
-        .filter(([_, stats]) => stats.games >= 5)
-        .sort((a, b) => (b[1].wins / b[1].games) - (a[1].wins / a[1].games))
-        .slice(0, 3);
-      renderTopPlayersWinPct(topPlayersWinPct);
-      
-      // Players - Most Wins
-      const topPlayersWins = Object.entries(playerStats)
-        .sort((a, b) => b[1].wins - a[1].wins)
-        .slice(0, 3);
-      renderTopPlayersWins(topPlayersWins);
-      
-      // Players - Best Form (based on last 5 games)
-      const topPlayersForm = Object.entries(playerStats)
-        .filter(([_, stats]) => stats.games >= 5)
-        .map(([player, stats]) => {
-          // Calculate form from recent games
-          const recentGames = games.slice(0, 5).filter(game => 
-            game.team1.includes(player) || game.team2.includes(player)
-          );
-          
-          // Build form array (W/L)
-          const form = [];
-          let formScore = 0;
-          recentGames.forEach((game, index) => {
-            const weight = recentGames.length - index;
-            const playerWon = (game.team1.includes(player) && game.score1 > game.score2) ||
-                             (game.team2.includes(player) && game.score2 > game.score1);
-            form.push(playerWon ? 'W' : 'L');
-            if (playerWon) formScore += weight;
-          });
-          
-          return [player, { ...stats, formScore, form, recentGames: recentGames.length }];
-        })
-        .filter(([_, stats]) => stats.recentGames >= 3)
-        .sort((a, b) => b[1].formScore - a[1].formScore)
-        .slice(0, 3);
-      renderTopPlayersForm(topPlayersForm);
-    };
-    
-    const renderTopTeamsWinPct = (topTeams) => {
-      const container = document.getElementById('top-teams-winpct');
-      if (topTeams.length === 0) {
-        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 3 games)</p>';
-        return;
-      }
-      
-      let html = '<table class="stats-table"><thead><tr><th></th><th>Team</th><th>Win%</th><th>Record</th></tr></thead><tbody>';
-      
-      topTeams.forEach(([team, stats], index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        const winPct = calculateWinPercentage(stats.wins, stats.games);
-        html += `
+
+        let html =
+          '<table class="stats-table"><thead><tr><th></th><th>Team</th><th>Win%</th><th>Record</th></tr></thead><tbody>';
+
+        topTeams.forEach(([team, stats], index) => {
+          const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+          const winPct = calculateWinPercentage(stats.wins, stats.games);
+          html += `
           <tr>
             <td>${medal}</td>
             <td><strong>${team}</strong></td>
@@ -1747,24 +1925,26 @@
             <td>${stats.wins}-${stats.losses}</td>
           </tr>
         `;
-      });
-      
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    };
-    
-    const renderTopTeamsWins = (topTeams) => {
-      const container = document.getElementById('top-teams-wins');
-      if (topTeams.length === 0) {
-        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">No teams yet</p>';
-        return;
-      }
-      
-      let html = '<table class="stats-table"><thead><tr><th></th><th>Team</th><th>Wins</th><th>Record</th></tr></thead><tbody>';
-      
-      topTeams.forEach(([team, stats], index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        html += `
+        });
+
+        html += "</tbody></table>";
+        container.innerHTML = html;
+      };
+
+      const renderTopTeamsWins = (topTeams) => {
+        const container = document.getElementById("top-teams-wins");
+        if (topTeams.length === 0) {
+          container.innerHTML =
+            '<p style="font-size: 0.85rem; color: #666;">No teams yet</p>';
+          return;
+        }
+
+        let html =
+          '<table class="stats-table"><thead><tr><th></th><th>Team</th><th>Wins</th><th>Record</th></tr></thead><tbody>';
+
+        topTeams.forEach(([team, stats], index) => {
+          const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+          html += `
           <tr>
             <td>${medal}</td>
             <td><strong>${team}</strong></td>
@@ -1772,50 +1952,54 @@
             <td>${stats.wins}-${stats.losses}</td>
           </tr>
         `;
-      });
-      
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    };
-    
-    const renderTopTeamsForm = (topTeams) => {
-      const container = document.getElementById('top-teams-form');
-      if (topTeams.length === 0) {
-        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 3 games)</p>';
-        return;
-      }
-      
-      let html = '<table class="stats-table"><thead><tr><th></th><th>Team</th><th>Form</th></tr></thead><tbody>';
-      
-      topTeams.forEach(([team, stats], index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        const formDisplay = getFormDisplay(stats.form);
-        html += `
+        });
+
+        html += "</tbody></table>";
+        container.innerHTML = html;
+      };
+
+      const renderTopTeamsForm = (topTeams) => {
+        const container = document.getElementById("top-teams-form");
+        if (topTeams.length === 0) {
+          container.innerHTML =
+            '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 3 games)</p>';
+          return;
+        }
+
+        let html =
+          '<table class="stats-table"><thead><tr><th></th><th>Team</th><th>Form</th></tr></thead><tbody>';
+
+        topTeams.forEach(([team, stats], index) => {
+          const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+          const formDisplay = getFormDisplay(stats.form);
+          html += `
           <tr>
             <td>${medal}</td>
             <td><strong>${team}</strong></td>
             <td>${formDisplay}</td>
           </tr>
         `;
-      });
-      
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    };
-    
-    const renderTopPlayersWinPct = (topPlayers) => {
-      const container = document.getElementById('top-players-winpct');
-      if (topPlayers.length === 0) {
-        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 5 games)</p>';
-        return;
-      }
-      
-      let html = '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Win%</th><th>Record</th></tr></thead><tbody>';
-      
-      topPlayers.forEach(([player, stats], index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        const winPct = calculateWinPercentage(stats.wins, stats.games);
-        html += `
+        });
+
+        html += "</tbody></table>";
+        container.innerHTML = html;
+      };
+
+      const renderTopPlayersWinPct = (topPlayers) => {
+        const container = document.getElementById("top-players-winpct");
+        if (topPlayers.length === 0) {
+          container.innerHTML =
+            '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 5 games)</p>';
+          return;
+        }
+
+        let html =
+          '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Win%</th><th>Record</th></tr></thead><tbody>';
+
+        topPlayers.forEach(([player, stats], index) => {
+          const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+          const winPct = calculateWinPercentage(stats.wins, stats.games);
+          html += `
           <tr>
             <td>${medal}</td>
             <td><strong>${player}</strong></td>
@@ -1823,24 +2007,26 @@
             <td>${stats.wins}-${stats.losses}</td>
           </tr>
         `;
-      });
-      
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    };
-    
-    const renderTopPlayersWins = (topPlayers) => {
-      const container = document.getElementById('top-players-wins');
-      if (topPlayers.length === 0) {
-        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">No players yet</p>';
-        return;
-      }
-      
-      let html = '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Wins</th><th>Record</th></tr></thead><tbody>';
-      
-      topPlayers.forEach(([player, stats], index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        html += `
+        });
+
+        html += "</tbody></table>";
+        container.innerHTML = html;
+      };
+
+      const renderTopPlayersWins = (topPlayers) => {
+        const container = document.getElementById("top-players-wins");
+        if (topPlayers.length === 0) {
+          container.innerHTML =
+            '<p style="font-size: 0.85rem; color: #666;">No players yet</p>';
+          return;
+        }
+
+        let html =
+          '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Wins</th><th>Record</th></tr></thead><tbody>';
+
+        topPlayers.forEach(([player, stats], index) => {
+          const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+          html += `
           <tr>
             <td>${medal}</td>
             <td><strong>${player}</strong></td>
@@ -1848,325 +2034,472 @@
             <td>${stats.wins}-${stats.losses}</td>
           </tr>
         `;
-      });
-      
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    };
-    
-    const renderWallOfShame = (wallOfShame) => {
-      const container = document.getElementById('wall-of-shame');
-      if (wallOfShame.length === 0) {
-        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">No shame yet! 🎉</p>';
-        return;
-      }
-      
-      let html = '<table class="stats-table"><thead><tr><th>Team</th><th>vs</th><th>Score</th></tr></thead><tbody>';
-      
-      wallOfShame.forEach((entry) => {
-        html += `
+        });
+
+        html += "</tbody></table>";
+        container.innerHTML = html;
+      };
+
+      const renderWallOfShame = (wallOfShame) => {
+        const container = document.getElementById("wall-of-shame");
+        if (wallOfShame.length === 0) {
+          container.innerHTML =
+            '<p style="font-size: 0.85rem; color: #666;">No shame yet! 🎉</p>';
+          return;
+        }
+
+        let html =
+          '<table class="stats-table"><thead><tr><th>Team</th><th>vs</th><th>Score</th></tr></thead><tbody>';
+
+        wallOfShame.forEach((entry) => {
+          html += `
           <tr>
             <td><strong>${entry.team}</strong></td>
             <td>${entry.opponent}</td>
             <td class="stat-number">${entry.score}</td>
           </tr>
         `;
-      });
-      
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    };
-    
-    const renderTopPlayersForm = (topPlayers) => {
-      const container = document.getElementById('top-players-form');
-      if (topPlayers.length === 0) {
-        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 5 games)</p>';
-        return;
-      }
-      
-      let html = '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Form</th></tr></thead><tbody>';
-      
-      topPlayers.forEach(([player, stats], index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        const formDisplay = getFormDisplay(stats.form);
-        
-        html += `
+        });
+
+        html += "</tbody></table>";
+        container.innerHTML = html;
+      };
+
+      const renderTopPlayersForm = (topPlayers) => {
+        const container = document.getElementById("top-players-form");
+        if (topPlayers.length === 0) {
+          container.innerHTML =
+            '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 5 games)</p>';
+          return;
+        }
+
+        let html =
+          '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Form</th></tr></thead><tbody>';
+
+        topPlayers.forEach(([player, stats], index) => {
+          const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+          const formDisplay = getFormDisplay(stats.form);
+
+          html += `
           <tr>
             <td>${medal}</td>
             <td><strong>${player}</strong></td>
             <td>${formDisplay}</td>
           </tr>
         `;
-      });
-      
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    };
+        });
 
-    // ============================================================================
-    // GAME LOGGING
-    // ============================================================================
-    const logGame = async () => {
-      if (!validateTeamSelections()) return;
-      
-      const scores = getScores();
-      if (!validateScores(scores)) return;
-      
-      const game = createGame(scores);
-      
-      try {
-        await saveGame(game);
-        resetSelection();
-        alert(MESSAGES.GAME_LOGGED);
-        currentPage = 1; // Reset to first page to see the new game
-        switchTab(TABS.GAMES);
-      } catch (error) {
-        alert('Failed to save game. Please try again.');
-      }
-    };
-    
-    const validateTeamSelections = () => {
-      if (!isTeamFull(selectedTeam1)) {
-        alert(MESSAGES.SELECT_TEAM(1));
-        return false;
-      }
-      
-      if (!isTeamFull(selectedTeam2)) {
-        alert(MESSAGES.SELECT_TEAM(2));
-        return false;
-      }
-      
-      return true;
-    };
-    
-    const getScores = () => {
-      return {
-        team1: parseInt(getElement(DOM_IDS.TEAM1_SCORE).value),
-        team2: parseInt(getElement(DOM_IDS.TEAM2_SCORE).value)
+        html += "</tbody></table>";
+        container.innerHTML = html;
       };
-    };
-    
-    const validateScores = (scores) => {
-      if (scores.team1 < MIN_SCORE || scores.team2 < MIN_SCORE || 
-          scores.team1 > MAX_SCORE || scores.team2 > MAX_SCORE) {
-        alert(MESSAGES.INVALID_SCORES);
-        return false;
-      }
-      
-      if (scores.team1 === 0 && scores.team2 === 0) {
-        alert(MESSAGES.ZERO_ZERO_SCORE);
-        return false;
-      }
-      
-      return true;
-    };
-    
-    const createGame = (scores) => {
-      return {
-        id: Date.now(),
-        date: new Date().toISOString(),
-        team1: [...selectedTeam1],
-        team2: [...selectedTeam2],
-        score1: scores.team1,
-        score2: scores.team2,
-        color1: 'black',
-        color2: 'white'
+
+      // ============================================================================
+      // GAME LOGGING
+      // ============================================================================
+      const logGame = async () => {
+        if (!validateTeamSelections()) return;
+
+        const scores = getScores();
+        if (!validateScores(scores)) return;
+
+        const game = createGame(scores);
+
+        try {
+          await saveGame(game);
+          resetSelection();
+          alert(MESSAGES.GAME_LOGGED);
+          currentPage = 1; // Reset to first page to see the new game
+          switchTab(TABS.GAMES);
+        } catch (error) {
+          alert("Failed to save game. Please try again.");
+        }
       };
-    };
 
-    // ============================================================================
-    // GAME DELETION
-    // ============================================================================
-    const deleteGame = async (gameId) => {
-      // Find the game to show details in confirmation
-      const game = games.find(g => g.id === gameId);
-      if (!game) {
-        alert('Game not found.');
-        return;
-      }
-      
-      // Build confirmation message with game details
-      const gameDetails = `${game.team1.join(' & ')} (${game.score1}) vs ${game.team2.join(' & ')} (${game.score2})`;
-      const confirmMessage = `Are you sure you want to delete this game?\n\n${gameDetails}\n${formatDateTime(game.date)}\n\nThis action cannot be undone.`;
-      
-      // Ask for confirmation
-      if (!confirm(confirmMessage)) {
-        return;
-      }
-      
-      try {
-        // Delete from database
-        await deleteGameFromDB(gameId);
-        
-        // Remove from local array
-        const index = games.findIndex(g => g.id === gameId);
-        if (index !== -1) {
-          games.splice(index, 1);
+      const validateTeamSelections = () => {
+        if (!isTeamFull(selectedTeam1)) {
+          alert(MESSAGES.SELECT_TEAM(1));
+          return false;
         }
-        
-        // Adjust current page if needed
-        const totalPages = Math.ceil(games.length / GAMES_PER_PAGE);
-        if (currentPage > totalPages && totalPages > 0) {
-          currentPage = totalPages;
-        } else if (games.length === 0) {
-          currentPage = 1;
-        }
-        
-        // Re-render all views that might be affected
-        renderGameHistory();
-        renderTeamStats();
-        renderPlayerStats();
-        
-        alert('Game deleted successfully.');
-      } catch (error) {
-        alert('Failed to delete game. Please try again.');
-      }
-    };
 
-    // ============================================================================
-    // TAB NAVIGATION
-    // ============================================================================
-    const switchTab = (tabName) => {
-      currentTab = tabName;
-      deactivateAllTabs();
-      activateTab(tabName);
-      updateUrlHash(tabName);
-    };
-    
-    const updateUrlHash = (tabName) => {
-      // Update URL hash without scrolling
-      history.replaceState(null, null, '#' + tabName);
-    };
-    
-    const getTabFromHash = () => {
-      const hash = window.location.hash.substring(1); // Remove the '#'
-      // Check if the hash corresponds to a valid tab
-      if (hash && Object.values(TABS).includes(hash)) {
-        return hash;
-      }
-      return TABS.LOG_GAME; // Default tab
-    };
-    
-    const deactivateAllTabs = () => {
-      getAllElements('.tab-content').forEach(tab => {
-        tab.classList.remove(CSS_CLASSES.ACTIVE);
-      });
-      
-      getAllElements('.tab').forEach(btn => {
-        btn.classList.remove(CSS_CLASSES.ACTIVE);
-      });
-    };
-    
-    const activateTab = (tabName) => {
-      const tabConfig = {
-        [TABS.LOG_GAME]: {
-          contentId: DOM_IDS.LOG_GAME_TAB,
-          buttonIndex: 0
-        },
-        [TABS.STATISTICS]: {
-          contentId: DOM_IDS.HISTORY_TAB,
-          buttonIndex: 1,
-          onActivate: () => {
-            renderTeamStats();
-            renderPlayerStats();
+        if (!isTeamFull(selectedTeam2)) {
+          alert(MESSAGES.SELECT_TEAM(2));
+          return false;
+        }
+
+        return true;
+      };
+
+      const getScores = () => {
+        return {
+          team1: parseInt(getElement(DOM_IDS.TEAM1_SCORE).value),
+          team2: parseInt(getElement(DOM_IDS.TEAM2_SCORE).value),
+        };
+      };
+
+      const validateScores = (scores) => {
+        if (
+          scores.team1 < MIN_SCORE ||
+          scores.team2 < MIN_SCORE ||
+          scores.team1 > MAX_SCORE ||
+          scores.team2 > MAX_SCORE
+        ) {
+          alert(MESSAGES.INVALID_SCORES);
+          return false;
+        }
+
+        if (scores.team1 === 0 && scores.team2 === 0) {
+          alert(MESSAGES.ZERO_ZERO_SCORE);
+          return false;
+        }
+
+        return true;
+      };
+
+      const createGame = (scores) => {
+        return {
+          id: Date.now(),
+          date: new Date().toISOString(),
+          team1: [...selectedTeam1],
+          team2: [...selectedTeam2],
+          score1: scores.team1,
+          score2: scores.team2,
+          color1: "black",
+          color2: "white",
+        };
+      };
+
+      // ============================================================================
+      // GAME DELETION
+      // ============================================================================
+      const deleteGame = async (gameId) => {
+        // Find the game to show details in confirmation
+        const game = games.find((g) => g.id === gameId);
+        if (!game) {
+          alert("Game not found.");
+          return;
+        }
+
+        // Build confirmation message with game details
+        const gameDetails = `${game.team1.join(" & ")} (${game.score1}) vs ${game.team2.join(" & ")} (${game.score2})`;
+        const confirmMessage = `Are you sure you want to delete this game?\n\n${gameDetails}\n${formatDateTime(game.date)}\n\nThis action cannot be undone.`;
+
+        // Ask for confirmation
+        if (!confirm(confirmMessage)) {
+          return;
+        }
+
+        try {
+          // Delete from database
+          await deleteGameFromDB(gameId);
+
+          // Remove from local array
+          const index = games.findIndex((g) => g.id === gameId);
+          if (index !== -1) {
+            games.splice(index, 1);
           }
-        },
-        [TABS.LEADERBOARD]: {
-          contentId: DOM_IDS.LEADERBOARD_TAB,
-          buttonIndex: 2,
-          onActivate: renderLeaderboard
-        },
-        [TABS.GAMES]: {
-          contentId: DOM_IDS.GAMES_TAB,
-          buttonIndex: 3,
-          onActivate: renderGameHistory
+
+          // Adjust current page if needed
+          const totalPages = Math.ceil(games.length / GAMES_PER_PAGE);
+          if (currentPage > totalPages && totalPages > 0) {
+            currentPage = totalPages;
+          } else if (games.length === 0) {
+            currentPage = 1;
+          }
+
+          // Re-render all views that might be affected
+          renderGameHistory();
+          renderTeamStats();
+          renderPlayerStats();
+
+          alert("Game deleted successfully.");
+        } catch (error) {
+          alert("Failed to delete game. Please try again.");
         }
       };
-      
-      const config = tabConfig[tabName];
-      if (!config) return;
-      
-      getElement(config.contentId).classList.add(CSS_CLASSES.ACTIVE);
-      getAllElements('.tab')[config.buttonIndex].classList.add(CSS_CLASSES.ACTIVE);
-      
-      if (config.onActivate) config.onActivate();
-    };
 
-    // ============================================================================
-    // REALTIME UPDATES
-    // ============================================================================
-    const showNotification = (message) => {
-      // Create notification element
-      const notification = document.createElement('div');
-      notification.className = 'realtime-notification';
-      notification.innerHTML = `
+      // ============================================================================
+      // TAB NAVIGATION
+      // ============================================================================
+      const switchTab = (tabName) => {
+        currentTab = tabName;
+        deactivateAllTabs();
+        activateTab(tabName);
+        updateUrlHash(tabName);
+      };
+
+      const updateUrlHash = (tabName) => {
+        // Update URL hash without scrolling
+        history.replaceState(null, null, "#" + tabName);
+      };
+
+      const getTabFromHash = () => {
+        const hash = window.location.hash.substring(1); // Remove the '#'
+        // Check if the hash corresponds to a valid tab
+        if (hash && Object.values(TABS).includes(hash)) {
+          return hash;
+        }
+        return TABS.LOG_GAME; // Default tab
+      };
+
+      const deactivateAllTabs = () => {
+        getAllElements(".tab-content").forEach((tab) => {
+          tab.classList.remove(CSS_CLASSES.ACTIVE);
+        });
+
+        getAllElements(".tab").forEach((btn) => {
+          btn.classList.remove(CSS_CLASSES.ACTIVE);
+        });
+      };
+
+      const activateTab = (tabName) => {
+        const tabConfig = {
+          [TABS.LOG_GAME]: {
+            contentId: DOM_IDS.LOG_GAME_TAB,
+            buttonIndex: 0,
+          },
+          [TABS.STATISTICS]: {
+            contentId: DOM_IDS.HISTORY_TAB,
+            buttonIndex: 1,
+            onActivate: () => {
+              renderTeamStats();
+              renderPlayerStats();
+            },
+          },
+          [TABS.LEADERBOARD]: {
+            contentId: DOM_IDS.LEADERBOARD_TAB,
+            buttonIndex: 2,
+            onActivate: renderLeaderboard,
+          },
+          [TABS.GAMES]: {
+            contentId: DOM_IDS.GAMES_TAB,
+            buttonIndex: 3,
+            onActivate: renderGameHistory,
+          },
+        };
+
+        const config = tabConfig[tabName];
+        if (!config) return;
+
+        getElement(config.contentId).classList.add(CSS_CLASSES.ACTIVE);
+        getAllElements(".tab")[config.buttonIndex].classList.add(
+          CSS_CLASSES.ACTIVE,
+        );
+
+        if (config.onActivate) config.onActivate();
+      };
+
+      // ============================================================================
+      // REALTIME UPDATES
+      // ============================================================================
+      const showNotification = (message) => {
+        // Create notification element
+        const notification = document.createElement("div");
+        notification.className = "realtime-notification";
+        notification.innerHTML = `
         <span>🔔</span>
         <span>${message}</span>
       `;
-      
-      document.body.appendChild(notification);
-      
-      // Remove after 3 seconds
-      setTimeout(() => {
-        notification.classList.add('fade-out');
+
+        document.body.appendChild(notification);
+
+        // Remove after 3 seconds
         setTimeout(() => {
-          document.body.removeChild(notification);
-        }, 300);
-      }, 3000);
-    };
-    
-    const refreshCurrentTab = () => {
-      // Refresh the data for the currently active tab
-      switch(currentTab) {
-        case TABS.LOG_GAME:
-          renderPlayerPool();
-          break;
-        case TABS.STATISTICS:
-          renderTeamStats();
-          renderPlayerStats();
-          break;
-        case TABS.LEADERBOARD:
-          renderLeaderboard();
-          break;
-        case TABS.GAMES:
-          renderGameHistory();
-          break;
-      }
-    };
-    
-    const setupRealtime = () => {
-      // Subscribe to changes on the games table
-      realtimeChannel = supabaseClient
-        .channel('db-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'games'
-          },
-          async (payload) => {
-            console.log('New game detected:', payload.new);
-            
-            // Check if the game already exists (to avoid duplicate from optimistic update)
-            const gameExists = games.some(g => g.id === payload.new.id);
-            
-            if (!gameExists) {
-              // Add the new game to our local games array
-              games.unshift(payload.new);
-              
+          notification.classList.add("fade-out");
+          setTimeout(() => {
+            document.body.removeChild(notification);
+          }, 300);
+        }, 3000);
+      };
+
+      const checkAndNotifyWallOfShame = (game) => {
+        let shameMessage = null;
+
+        if (game.score1 === 0 && game.score2 > game.score1) {
+          shameMessage = `💀 ${game.team1} got destroyed ${game.score1}:${game.score2} by ${game.team2}!`;
+        } else if (game.score2 === 0 && game.score1 > game.score2) {
+          shameMessage = `💀 ${game.team2} got destroyed ${game.score2}:${game.score1} by ${game.team1}!`;
+        }
+
+        if (shameMessage) {
+          showNotification(shameMessage);
+          sendPushNotificationToAll(shameMessage);
+        }
+      };
+
+      const refreshCurrentTab = () => {
+        // Refresh the data for the currently active tab
+        switch (currentTab) {
+          case TABS.LOG_GAME:
+            renderPlayerPool();
+            break;
+          case TABS.STATISTICS:
+            renderTeamStats();
+            renderPlayerStats();
+            break;
+          case TABS.LEADERBOARD:
+            renderLeaderboard();
+            break;
+          case TABS.GAMES:
+            renderGameHistory();
+            break;
+        }
+      };
+
+      const setupRealtime = () => {
+        // Subscribe to changes on the games table
+        realtimeChannel = supabaseClient
+          .channel("db-changes")
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "games",
+            },
+            async (payload) => {
+              console.log("New game detected:", payload.new);
+
+              // Check if this is a wall of shame entry
+              checkAndNotifyWallOfShame(payload.new);
+
+              // Check if the game already exists (to avoid duplicate from optimistic update)
+              const gameExists = games.some((g) => g.id === payload.new.id);
+
+              if (!gameExists) {
+                // Add the new game to our local games array
+                games.unshift(payload.new);
+
+                // Show notification
+                showNotification("New game added!");
+
+                // Refresh the current tab's display
+                refreshCurrentTab();
+              }
+            },
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "DELETE",
+              schema: "public",
+              table: "games",
+            },
+            async (payload) => {
+              console.log("Game deleted:", payload.old);
+
+              // Remove the game from our local games array
+              games = games.filter((g) => g.id !== payload.old.id);
+
               // Show notification
-              showNotification('New game added!');
-              
+              showNotification("Game deleted");
+
               // Refresh the current tab's display
               refreshCurrentTab();
+            },
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "players",
+            },
+            async (payload) => {
+              console.log("New player added:", payload.new);
+
+              // Add the new player to our local players array
+              if (!players.includes(payload.new.name)) {
+                players.push(payload.new.name);
+
+                // Show notification
+                showNotification(`Player "${payload.new.name}" joined!`);
+
+                // Refresh player pool if on log game tab
+                if (currentTab === TABS.LOG_GAME) {
+                  renderPlayerPool();
+                }
+              }
+            },
+          )
+          .subscribe((status) => {
+            console.log("Realtime subscription status:", status);
+          });
+      };
+
+      // ============================================================================
+      // PUSH NOTIFICATIONS
+      // ============================================================================
+      const registerServiceWorker = async () => {
+        if (!("serviceWorker" in navigator)) {
+          console.log("Service Worker not supported");
+          return null;
+        }
+
+        try {
+          const registration = await navigator.serviceWorker.register("/sw.js");
+          console.log("Service Worker registered:", registration);
+
+          // Listen for messages from service worker
+          navigator.serviceWorker.addEventListener("message", (event) => {
+            if (event.data.type === "NAVIGATE_TO_STATS") {
+              switchTab(TABS.LEADERBOARD);
             }
+          });
+
+          return registration;
+        } catch (error) {
+          console.error("Service Worker registration failed:", error);
+          return null;
+        }
+      };
+
+      const updateNotificationUI = () => {
+        const toggleDiv = document.getElementById("notification-toggle");
+        const statusSpan = document.getElementById("notification-status");
+        const btn = document.getElementById("notification-btn");
+
+        if (notificationPermission === "granted" && pushSubscription) {
+          toggleDiv.classList.add("enabled");
+          statusSpan.textContent = "🔔 Push notifications enabled";
+          btn.textContent = "Disable Notifications";
+          btn.className = "notification-btn disable";
+        } else {
+          toggleDiv.classList.remove("enabled");
+          statusSpan.textContent = "🔕 Push notifications disabled";
+          btn.textContent = "Enable Notifications";
+          btn.className = "notification-btn enable";
+        }
+
+        if (notificationPermission === "denied") {
+          statusSpan.textContent =
+            "🚫 Notifications blocked (check browser settings)";
+          btn.disabled = true;
+        } else {
+          btn.disabled = false;
+        }
+      };
+
+      const togglePushNotifications = async () => {
+        if (pushSubscription) {
+          await unsubscribeFromPush();
+        } else {
+          await subscribeToPush();
+        }
+      };
+
+      const subscribeToPush = async () => {
+        try {
+          // Request notification permission
+          const permission = await Notification.requestPermission();
+          notificationPermission = permission;
+
+          if (permission !== "granted") {
+            alert(
+              "Please allow notifications to receive Wall of Shame updates!",
+            );
+            updateNotificationUI();
+            return;
           }
-<<<<<<< Updated upstream
-        )
-        .on(
-          'postgres_changes',
-=======
 
           // Get service worker registration
           const registration = await navigator.serviceWorker.ready;
@@ -2248,92 +2581,86 @@
 
       const sendPushNotificationToAll = async (message) => {
         const { data, error } = await supabaseClient.functions.invoke(
-          "kicker-stats-api",
->>>>>>> Stashed changes
+          "send-push-notification",
           {
-            event: 'DELETE',
-            schema: 'public',
-            table: 'games'
+            body: { message },
           },
-          async (payload) => {
-            console.log('Game deleted:', payload.old);
-            
-            // Remove the game from our local games array
-            games = games.filter(g => g.id !== payload.old.id);
-            
-            // Show notification
-            showNotification('Game deleted');
-            
-            // Refresh the current tab's display
-            refreshCurrentTab();
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'players'
-          },
-          async (payload) => {
-            console.log('New player added:', payload.new);
-            
-            // Add the new player to our local players array
-            if (!players.includes(payload.new.name)) {
-              players.push(payload.new.name);
-              
-              // Show notification
-              showNotification(`Player "${payload.new.name}" joined!`);
-              
-              // Refresh player pool if on log game tab
-              if (currentTab === TABS.LOG_GAME) {
-                renderPlayerPool();
-              }
-            }
-          }
-        )
-        .subscribe((status) => {
-          console.log('Realtime subscription status:', status);
-        });
-    };
+        );
+      };
 
-    // ============================================================================
-    // INITIALIZATION
-    // ============================================================================
-    const init = async () => {
-      // Show loading state
-      const playerPool = getElement(DOM_IDS.PLAYER_POOL);
-      const gameHistory = getElement(DOM_IDS.GAME_HISTORY);
-      
-      playerPool.innerHTML = '<p>Loading players...</p>';
-      gameHistory.innerHTML = '<p>Loading games...</p>';
-      
-      // Load data from Supabase
-      await loadData();
-      
-      // Setup realtime subscriptions
-      setupRealtime();
-      
-      // Render UI
-      renderPlayerPool();
-      renderGameHistory();
-      
-      // Check URL hash and switch to the appropriate tab
-      const initialTab = getTabFromHash();
-      if (initialTab !== TABS.LOG_GAME) {
-        switchTab(initialTab);
-      }
-      
-      // Listen for hash changes (back/forward navigation)
-      window.addEventListener('hashchange', () => {
-        const tabFromHash = getTabFromHash();
-        if (tabFromHash !== currentTab) {
-          switchTab(tabFromHash);
+      const urlBase64ToUint8Array = (base64String) => {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding)
+          .replace(/\-/g, "+")
+          .replace(/_/g, "/");
+
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
         }
-      });
-    };
+        return outputArray;
+      };
 
-    init();
-  </script>
-</body>
+      const checkExistingSubscription = async () => {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          const subscription = await registration.pushManager.getSubscription();
+
+          if (subscription) {
+            pushSubscription = subscription;
+            notificationPermission = Notification.permission;
+          }
+
+          updateNotificationUI();
+        } catch (error) {
+          console.error("Failed to check subscription:", error);
+        }
+      };
+
+      // ============================================================================
+      // INITIALIZATION
+      // ============================================================================
+      const init = async () => {
+        // Show loading state
+        const playerPool = getElement(DOM_IDS.PLAYER_POOL);
+        const gameHistory = getElement(DOM_IDS.GAME_HISTORY);
+
+        playerPool.innerHTML = "<p>Loading players...</p>";
+        gameHistory.innerHTML = "<p>Loading games...</p>";
+
+        // Register service worker and check for existing subscription
+        await registerServiceWorker();
+        notificationPermission = Notification.permission;
+        await checkExistingSubscription();
+
+        // Load data from Supabase
+        await loadData();
+
+        // Setup realtime subscriptions
+        setupRealtime();
+
+        // Render UI
+        renderPlayerPool();
+        renderGameHistory();
+
+        // Check URL hash and switch to the appropriate tab
+        const initialTab = getTabFromHash();
+        if (initialTab !== TABS.LOG_GAME) {
+          switchTab(initialTab);
+        }
+
+        // Listen for hash changes (back/forward navigation)
+        window.addEventListener("hashchange", () => {
+          const tabFromHash = getTabFromHash();
+          if (tabFromHash !== currentTab) {
+            switchTab(tabFromHash);
+          }
+        });
+      };
+
+      init();
+    </script>
+  </body>
 </html>
