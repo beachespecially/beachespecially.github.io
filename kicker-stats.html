@@ -2581,7 +2581,7 @@
 
       const sendPushNotificationToAll = async (message) => {
         const { data, error } = await supabaseClient.functions.invoke(
-          "send-push-notification",
+          "kicker-stats-api",
           {
             body: { message },
           },
