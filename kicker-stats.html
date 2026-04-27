@@ -406,6 +406,120 @@
     .tab-content.active {
       display: block;
     }
+    
+    .leaderboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin: 0.5rem 0;
+    }
+    
+    .leaderboard-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 0.75rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .leaderboard-card h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.95rem;
+      color: #333;
+      border-bottom: 2px solid #2196F3;
+      padding-bottom: 0.4rem;
+    }
+    
+    .leaderboard-card h2 {
+      margin: 0 0 1rem 0;
+      font-size: 1.2rem;
+      text-align: center;
+      grid-column: 1 / -1;
+    }
+    
+    .leaderboard-card .stats-table {
+      margin: 0;
+      font-size: 0.85rem;
+    }
+    
+    .leaderboard-card .stats-table th,
+    .leaderboard-card .stats-table td {
+      padding: 0.4rem 0.3rem;
+    }
+    
+    .leaderboard-card .stats-table th {
+      font-size: 0.8rem;
+    }
+    
+    .section-header {
+      grid-column: 1 / -1;
+      text-align: center;
+      margin: 0.5rem 0 0.25rem 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #ddd;
+      font-size: 1.1rem;
+    }
+    
+    @media (max-width: 1200px) {
+      .leaderboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .leaderboard-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .section-header {
+        grid-column: 1;
+      }
+      
+      .leaderboard-card h2 {
+        grid-column: 1;
+      }
+    }
+    
+    .realtime-notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4CAF50;
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 1000;
+      animation: slideIn 0.3s ease-out;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    .realtime-notification.fade-out {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+    
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+        transform: translateX(400px);
+      }
+    }
   </style>
 </head>
 <body>
@@ -417,6 +531,7 @@
     <div class="tabs">
       <button class="tab active" onclick="switchTab('log-game')">Log Game</button>
       <button class="tab" onclick="switchTab('statistics')">Statistics</button>
+      <button class="tab" onclick="switchTab('leaderboard')">Leaderboard</button>
       <button class="tab" onclick="switchTab('games')">History</button>
     </div>
 
@@ -477,6 +592,47 @@
     </section>
     </div>
 
+    <!-- Leaderboard Tab -->
+    <div id="leaderboard-tab" class="tab-content">
+    <section id="leaderboard-section">
+      <div class="leaderboard-grid">
+        <h2 class="section-header">🏆 Team Leaderboards</h2>
+        
+        <div class="leaderboard-card">
+          <h3>Best Win Percentage</h3>
+          <div id="top-teams-winpct"></div>
+        </div>
+        
+        <div class="leaderboard-card">
+          <h3>Most Wins</h3>
+          <div id="top-teams-wins"></div>
+        </div>
+        
+        <div class="leaderboard-card">
+          <h3>Best Form (Hot Streak)</h3>
+          <div id="top-teams-form"></div>
+        </div>
+        
+        <h2 class="section-header">⭐ Player Leaderboards</h2>
+        
+        <div class="leaderboard-card">
+          <h3>Best Win Percentage</h3>
+          <div id="top-players-winpct"></div>
+        </div>
+        
+        <div class="leaderboard-card">
+          <h3>Most Wins</h3>
+          <div id="top-players-wins"></div>
+        </div>
+        
+        <div class="leaderboard-card">
+          <h3>Best Form (Hot Streak)</h3>
+          <div id="top-players-form"></div>
+        </div>
+      </div>
+    </section>
+    </div>
+
     <!-- Games Tab -->
     <div id="games-tab" class="tab-content">
     <section id="game-history-section">
@@ -523,6 +679,7 @@
       PLAYER_STATS: 'player-stats',
       LOG_GAME_TAB: 'log-game-tab',
       HISTORY_TAB: 'history-tab',
+      LEADERBOARD_TAB: 'leaderboard-tab',
       GAMES_TAB: 'games-tab'
     };
     
@@ -551,6 +708,7 @@
     const TABS = {
       LOG_GAME: 'log-game',
       STATISTICS: 'statistics',
+      LEADERBOARD: 'leaderboard',
       GAMES: 'games'
     };
 
@@ -566,6 +724,8 @@
     let playerSortColumn = 'wins';
     let playerSortDirection = 'desc';
     let currentPage = 1;
+    let currentTab = TABS.LOG_GAME;
+    let realtimeChannel = null;
 
     // ============================================================================
     // UTILITY FUNCTIONS
@@ -1412,6 +1572,252 @@
     };
 
     // ============================================================================
+    // LEADERBOARD
+    // ============================================================================
+    const calculateFormScore = (form) => {
+      if (!form || form.length === 0) return 0;
+      
+      // Calculate score based on recent form (last 5 games)
+      // More recent games have higher weight: [5, 4, 3, 2, 1]
+      const recentForm = form.slice(0, 5);
+      let score = 0;
+      
+      recentForm.forEach((result, index) => {
+        const weight = 5 - index; // Fixed weights: most recent = 5, oldest = 1
+        if (result === 'W') {
+          score += weight;
+        }
+      });
+      
+      return score;
+    };
+    
+    const renderLeaderboard = () => {
+      const teamStats = calculateTeamStats();
+      const playerStats = calculatePlayerStats();
+      
+      // Teams - Best Win Percentage (minimum 3 games)
+      const topTeamsWinPct = Object.entries(teamStats)
+        .filter(([_, stats]) => stats.games >= 3)
+        .sort((a, b) => (b[1].wins / b[1].games) - (a[1].wins / a[1].games))
+        .slice(0, 3);
+      renderTopTeamsWinPct(topTeamsWinPct);
+      
+      // Teams - Most Wins
+      const topTeamsWins = Object.entries(teamStats)
+        .sort((a, b) => b[1].wins - a[1].wins)
+        .slice(0, 3);
+      renderTopTeamsWins(topTeamsWins);
+      
+      // Teams - Best Form
+      const topTeamsForm = Object.entries(teamStats)
+        .filter(([_, stats]) => stats.form && stats.form.length >= 3)
+        .sort((a, b) => calculateFormScore(b[1].form) - calculateFormScore(a[1].form))
+        .slice(0, 3);
+      renderTopTeamsForm(topTeamsForm);
+      
+      // Players - Best Win Percentage (minimum 5 games)
+      const topPlayersWinPct = Object.entries(playerStats)
+        .filter(([_, stats]) => stats.games >= 5)
+        .sort((a, b) => (b[1].wins / b[1].games) - (a[1].wins / a[1].games))
+        .slice(0, 3);
+      renderTopPlayersWinPct(topPlayersWinPct);
+      
+      // Players - Most Wins
+      const topPlayersWins = Object.entries(playerStats)
+        .sort((a, b) => b[1].wins - a[1].wins)
+        .slice(0, 3);
+      renderTopPlayersWins(topPlayersWins);
+      
+      // Players - Best Form (based on last 5 games)
+      const topPlayersForm = Object.entries(playerStats)
+        .filter(([_, stats]) => stats.games >= 5)
+        .map(([player, stats]) => {
+          // Calculate form from recent games
+          const recentGames = games.slice(0, 5).filter(game => 
+            game.team1.includes(player) || game.team2.includes(player)
+          );
+          
+          let formScore = 0;
+          recentGames.forEach((game, index) => {
+            const weight = recentGames.length - index;
+            const playerWon = (game.team1.includes(player) && game.score1 > game.score2) ||
+                             (game.team2.includes(player) && game.score2 > game.score1);
+            if (playerWon) formScore += weight;
+          });
+          
+          return [player, { ...stats, formScore, recentGames: recentGames.length }];
+        })
+        .filter(([_, stats]) => stats.recentGames >= 3)
+        .sort((a, b) => b[1].formScore - a[1].formScore)
+        .slice(0, 3);
+      renderTopPlayersForm(topPlayersForm);
+    };
+    
+    const renderTopTeamsWinPct = (topTeams) => {
+      const container = document.getElementById('top-teams-winpct');
+      if (topTeams.length === 0) {
+        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 3 games)</p>';
+        return;
+      }
+      
+      let html = '<table class="stats-table"><thead><tr><th></th><th>Team</th><th>Win%</th><th>Record</th></tr></thead><tbody>';
+      
+      topTeams.forEach(([team, stats], index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        const winPct = calculateWinPercentage(stats.wins, stats.games);
+        html += `
+          <tr>
+            <td>${medal}</td>
+            <td><strong>${team}</strong></td>
+            <td class="stat-number">${winPct}%</td>
+            <td>${stats.wins}-${stats.losses}</td>
+          </tr>
+        `;
+      });
+      
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    };
+    
+    const renderTopTeamsWins = (topTeams) => {
+      const container = document.getElementById('top-teams-wins');
+      if (topTeams.length === 0) {
+        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">No teams yet</p>';
+        return;
+      }
+      
+      let html = '<table class="stats-table"><thead><tr><th></th><th>Team</th><th>Wins</th><th>Record</th></tr></thead><tbody>';
+      
+      topTeams.forEach(([team, stats], index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        html += `
+          <tr>
+            <td>${medal}</td>
+            <td><strong>${team}</strong></td>
+            <td class="stat-number">${stats.wins}</td>
+            <td>${stats.wins}-${stats.losses}</td>
+          </tr>
+        `;
+      });
+      
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    };
+    
+    const renderTopTeamsForm = (topTeams) => {
+      const container = document.getElementById('top-teams-form');
+      if (topTeams.length === 0) {
+        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 3 games)</p>';
+        return;
+      }
+      
+      let html = '<table class="stats-table"><thead><tr><th></th><th>Team</th><th>Form</th></tr></thead><tbody>';
+      
+      topTeams.forEach(([team, stats], index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        const formDisplay = getFormDisplay(stats.form);
+        html += `
+          <tr>
+            <td>${medal}</td>
+            <td><strong>${team}</strong></td>
+            <td>${formDisplay}</td>
+          </tr>
+        `;
+      });
+      
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    };
+    
+    const renderTopPlayersWinPct = (topPlayers) => {
+      const container = document.getElementById('top-players-winpct');
+      if (topPlayers.length === 0) {
+        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 5 games)</p>';
+        return;
+      }
+      
+      let html = '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Win%</th><th>Record</th></tr></thead><tbody>';
+      
+      topPlayers.forEach(([player, stats], index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        const winPct = calculateWinPercentage(stats.wins, stats.games);
+        html += `
+          <tr>
+            <td>${medal}</td>
+            <td><strong>${player}</strong></td>
+            <td class="stat-number">${winPct}%</td>
+            <td>${stats.wins}-${stats.losses}</td>
+          </tr>
+        `;
+      });
+      
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    };
+    
+    const renderTopPlayersWins = (topPlayers) => {
+      const container = document.getElementById('top-players-wins');
+      if (topPlayers.length === 0) {
+        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">No players yet</p>';
+        return;
+      }
+      
+      let html = '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Wins</th><th>Record</th></tr></thead><tbody>';
+      
+      topPlayers.forEach(([player, stats], index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        html += `
+          <tr>
+            <td>${medal}</td>
+            <td><strong>${player}</strong></td>
+            <td class="stat-number">${stats.wins}</td>
+            <td>${stats.wins}-${stats.losses}</td>
+          </tr>
+        `;
+      });
+      
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    };
+    
+    const renderTopPlayersForm = (topPlayers) => {
+      const container = document.getElementById('top-players-form');
+      if (topPlayers.length === 0) {
+        container.innerHTML = '<p style="font-size: 0.85rem; color: #666;">Not enough data (min 5 games)</p>';
+        return;
+      }
+      
+      let html = '<table class="stats-table"><thead><tr><th></th><th>Player</th><th>Recent</th></tr></thead><tbody>';
+      
+      topPlayers.forEach(([player, stats], index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        // Calculate recent wins for display
+        const recentGames = games.slice(0, 5).filter(game => 
+          game.team1.includes(player) || game.team2.includes(player)
+        );
+        
+        const recentWins = recentGames.filter(game => 
+          (game.team1.includes(player) && game.score1 > game.score2) ||
+          (game.team2.includes(player) && game.score2 > game.score1)
+        ).length;
+        
+        const formText = `${recentWins}/${recentGames.length}`;
+        
+        html += `
+          <tr>
+            <td>${medal}</td>
+            <td><strong>${player}</strong></td>
+            <td class="stat-number">${formText}</td>
+          </tr>
+        `;
+      });
+      
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    };
+
+    // ============================================================================
     // GAME LOGGING
     // ============================================================================
     const logGame = async () => {
@@ -1535,6 +1941,7 @@
     // TAB NAVIGATION
     // ============================================================================
     const switchTab = (tabName) => {
+      currentTab = tabName;
       deactivateAllTabs();
       activateTab(tabName);
     };
@@ -1563,9 +1970,14 @@
             renderPlayerStats();
           }
         },
+        [TABS.LEADERBOARD]: {
+          contentId: DOM_IDS.LEADERBOARD_TAB,
+          buttonIndex: 2,
+          onActivate: renderLeaderboard
+        },
         [TABS.GAMES]: {
           contentId: DOM_IDS.GAMES_TAB,
-          buttonIndex: 2,
+          buttonIndex: 3,
           onActivate: renderGameHistory
         }
       };
@@ -1577,6 +1989,121 @@
       getAllElements('.tab')[config.buttonIndex].classList.add(CSS_CLASSES.ACTIVE);
       
       if (config.onActivate) config.onActivate();
+    };
+
+    // ============================================================================
+    // REALTIME UPDATES
+    // ============================================================================
+    const showNotification = (message) => {
+      // Create notification element
+      const notification = document.createElement('div');
+      notification.className = 'realtime-notification';
+      notification.innerHTML = `
+        <span>🔔</span>
+        <span>${message}</span>
+      `;
+      
+      document.body.appendChild(notification);
+      
+      // Remove after 3 seconds
+      setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 300);
+      }, 3000);
+    };
+    
+    const refreshCurrentTab = () => {
+      // Refresh the data for the currently active tab
+      switch(currentTab) {
+        case TABS.LOG_GAME:
+          renderPlayerPool();
+          break;
+        case TABS.STATISTICS:
+          renderTeamStats();
+          renderPlayerStats();
+          break;
+        case TABS.LEADERBOARD:
+          renderLeaderboard();
+          break;
+        case TABS.GAMES:
+          renderGameHistory();
+          break;
+      }
+    };
+    
+    const setupRealtime = () => {
+      // Subscribe to changes on the games table
+      realtimeChannel = supabaseClient
+        .channel('db-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'games'
+          },
+          async (payload) => {
+            console.log('New game detected:', payload.new);
+            
+            // Add the new game to our local games array
+            games.unshift(payload.new);
+            
+            // Show notification
+            showNotification('New game added!');
+            
+            // Refresh the current tab's display
+            refreshCurrentTab();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'games'
+          },
+          async (payload) => {
+            console.log('Game deleted:', payload.old);
+            
+            // Remove the game from our local games array
+            games = games.filter(g => g.id !== payload.old.id);
+            
+            // Show notification
+            showNotification('Game deleted');
+            
+            // Refresh the current tab's display
+            refreshCurrentTab();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'players'
+          },
+          async (payload) => {
+            console.log('New player added:', payload.new);
+            
+            // Add the new player to our local players array
+            if (!players.includes(payload.new.name)) {
+              players.push(payload.new.name);
+              
+              // Show notification
+              showNotification(`Player "${payload.new.name}" joined!`);
+              
+              // Refresh player pool if on log game tab
+              if (currentTab === TABS.LOG_GAME) {
+                renderPlayerPool();
+              }
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('Realtime subscription status:', status);
+        });
     };
 
     // ============================================================================
@@ -1592,6 +2119,9 @@
       
       // Load data from Supabase
       await loadData();
+      
+      // Setup realtime subscriptions
+      setupRealtime();
       
       // Render UI
       renderPlayerPool();
