@@ -1788,9 +1788,12 @@
         let score = 0;
 
         recentForm.forEach((result, index) => {
-          const weight = 5 - index; // Fixed weights: most recent = 5, oldest = 1
+          const weight = 5 - index; // Most recent = 5, oldest = 1
           if (result === "W") {
             score += weight;
+          } else if (result === "L") {
+            // Subtract points for losses to break ties
+            score -= weight * 0.5;
           }
         });
 
@@ -1873,23 +1876,28 @@
           .filter(([_, stats]) => stats.games >= 5)
           .map(([player, stats]) => {
             // Calculate form from recent games
-            const recentGames = games
-              .slice(0, 5)
-              .filter(
-                (game) =>
-                  game.team1.includes(player) || game.team2.includes(player),
-              );
+            // First filter for player's games, THEN take most recent 5
+            const playerGames = games.filter(
+              (game) =>
+                game.team1.includes(player) || game.team2.includes(player),
+            );
+            const recentGames = playerGames.slice(0, 5);
 
             // Build form array (W/L)
             const form = [];
             let formScore = 0;
             recentGames.forEach((game, index) => {
-              const weight = recentGames.length - index;
+              const weight = 5 - index; // Most recent = 5, oldest = 1
               const playerWon =
                 (game.team1.includes(player) && game.score1 > game.score2) ||
                 (game.team2.includes(player) && game.score2 > game.score1);
               form.push(playerWon ? "W" : "L");
-              if (playerWon) formScore += weight;
+              if (playerWon) {
+                formScore += weight;
+              } else {
+                // Subtract points for losses to break ties
+                formScore -= weight * 0.5;
+              }
             });
 
             return [
