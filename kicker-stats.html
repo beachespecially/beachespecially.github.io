@@ -61,10 +61,10 @@
       }
 
       .team-selection {
-        margin: 1rem 0;
-        padding: 1.5rem;
+        margin: 0.5rem 0;
+        padding: 0.5rem;
         border: 2px solid #ddd;
-        border-radius: 8px;
+        border-radius: 6px;
         background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
@@ -81,8 +81,8 @@
 
       .team-color-indicator {
         display: inline-block;
-        width: 20px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
         border-radius: 50%;
         margin-left: 0.5rem;
         vertical-align: middle;
@@ -100,18 +100,19 @@
 
       .team-selection h3 {
         margin-top: 0;
+        margin-bottom: 0.25rem;
         text-align: center;
-        font-size: 1.1rem;
+        font-size: 0.9rem;
       }
 
       .selected-players {
-        min-height: 8rem;
-        height: 8rem;
-        margin: 1rem 0 0 0;
+        min-height: 3rem;
+        height: 3rem;
+        margin: 0.25rem 0 0 0;
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 1rem;
+        gap: 0.5rem;
         flex-wrap: wrap;
       }
 
@@ -119,11 +120,11 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 0.75rem;
+        padding: 0.25rem;
         background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        min-width: 80px;
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        min-width: 50px;
         cursor: pointer;
         transition:
           transform 0.2s,
@@ -133,25 +134,28 @@
 
       .player-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
       }
 
       .player-icon {
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
+        font-size: 1.25rem;
+        margin-bottom: 0.1rem;
+        line-height: 1;
       }
 
       .player-name {
         font-weight: bold;
-        font-size: 0.9rem;
+        font-size: 0.7rem;
         text-align: center;
         word-break: break-word;
+        line-height: 1.1;
       }
 
       .empty-slot {
         color: #999;
         text-align: center;
         font-style: italic;
+        font-size: 0.8rem;
         display: flex;
         align-items: center;
         justify-content: center;
