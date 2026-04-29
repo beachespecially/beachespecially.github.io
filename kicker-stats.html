@@ -2315,9 +2315,9 @@
         let shameMessage = null;
 
         if (game.score1 === 0 && game.score2 > game.score1) {
-          shameMessage = `💀 ${game.team1} got destroyed ${game.score1}:${game.score2} by ${game.team2}!`;
+          shameMessage = `🪒💀 ${game.team1} wurden gerade ${game.score1}:${game.score2} von ${game.team2} rasiert!`;
         } else if (game.score2 === 0 && game.score1 > game.score2) {
-          shameMessage = `💀 ${game.team2} got destroyed ${game.score2}:${game.score1} by ${game.team1}!`;
+          shameMessage = `🪒💀 ${game.team2} wurden gerade ${game.score2}:${game.score1} von ${game.team1} rasiert!`;
         }
 
         if (shameMessage) {
@@ -2519,7 +2519,7 @@
           await saveSubscription(subscription);
 
           showNotification(
-            "🔔 You'll now receive Wall of Shame notifications!",
+            "You'll now receive Wall of Shame notifications!",
           );
           updateNotificationUI();
         } catch (error) {
@@ -2580,12 +2580,23 @@
       };
 
       const sendPushNotificationToAll = async (message) => {
-        const { data, error } = await supabaseClient.functions.invoke(
-          "kicker-stats-api",
-          {
-            body: { message },
-          },
-        );
+        try {
+          console.log('Sending push notification:', message);
+          const { data, error } = await supabaseClient.functions.invoke(
+            "kicker-stats-api",
+            {
+              body: { message },
+            },
+          );
+          
+          if (error) {
+            console.error('Push notification error:', error);
+          } else {
+            console.log('Push notification response:', data);
+          }
+        } catch (err) {
+          console.error('Push notification failed:', err);
+        }
       };
 
       const urlBase64ToUint8Array = (base64String) => {
