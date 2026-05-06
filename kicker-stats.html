@@ -557,59 +557,59 @@
         from {
           opacity: 1;
         }
-
-        .notification-toggle {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
-          padding: 1rem;
-          background: #f8f9fa;
-          border-radius: 8px;
-          margin-bottom: 1rem;
-          border: 2px solid #e0e0e0;
-        }
-
-        .notification-toggle.enabled {
-          background: #e8f5e9;
-          border-color: #4caf50;
-        }
-
-        .notification-btn {
-          padding: 0.5rem 1rem;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: all 0.2s;
-        }
-
-        .notification-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .notification-btn.enable {
-          background: #4caf50;
-          color: white;
-        }
-
-        .notification-btn.enable:hover:not(:disabled) {
-          background: #45a049;
-        }
-
-        .notification-btn.disable {
-          background: #f44336;
-          color: white;
-        }
-
-        .notification-btn.disable:hover:not(:disabled) {
-          background: #da190b;
-        }
         to {
           opacity: 0;
           transform: translateX(400px);
         }
+      }
+
+      .notification-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border: 2px solid #e0e0e0;
+      }
+
+      .notification-toggle.enabled {
+        background: #e8f5e9;
+        border-color: #4caf50;
+      }
+
+      .notification-btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .notification-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .notification-btn.enable {
+        background: #4caf50;
+        color: white;
+      }
+
+      .notification-btn.enable:hover:not(:disabled) {
+        background: #45a049;
+      }
+
+      .notification-btn.disable {
+        background: #f44336;
+        color: white;
+      }
+
+      .notification-btn.disable:hover:not(:disabled) {
+        background: #da190b;
       }
     </style>
   </head>
@@ -2643,6 +2643,16 @@
       };
 
       // ============================================================================
+      // DATA REFRESH ON APP RESUME
+      // ============================================================================
+      const refreshDataIfNeeded = async () => {
+        console.log("App resumed - refreshing data...");
+        await loadData();
+        refreshCurrentTab();
+        console.log("Data refreshed");
+      };
+
+      // ============================================================================
       // INITIALIZATION
       // ============================================================================
       const init = async () => {
@@ -2679,6 +2689,21 @@
           const tabFromHash = getTabFromHash();
           if (tabFromHash !== currentTab) {
             switchTab(tabFromHash);
+          }
+        });
+
+        // Refresh data when app becomes visible (user switches back to the app)
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) {
+            refreshDataIfNeeded();
+          }
+        });
+
+        // Refresh data when page is shown (for iOS/PWA back navigation)
+        window.addEventListener("pageshow", (event) => {
+          // event.persisted indicates if page was loaded from cache
+          if (event.persisted) {
+            refreshDataIfNeeded();
           }
         });
       };
